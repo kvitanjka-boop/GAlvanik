@@ -1,0 +1,34 @@
+{
+  "applicationId": "at.jojo.galvanikbad3d",
+  "version": "1.0.0",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/resources/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": false,
+  "tokenSecurity": "one-time",
+  "logging": { "enabled": false, "writeToLogFile": false },
+  "modes": {
+    "window": {
+      "title": "Galvanik-Bad 3D",
+      "width": 1400,
+      "height": 880,
+      "minWidth": 1000,
+      "minHeight": 640,
+      "center": true,
+      "maximize": true,
+      "icon": "/resources/icons/appIcon.png",
+      "enableInspector": false,
+      "resizable": true,
+      "exitProcessOnClose": true
+    }
+  },
+  "cli": {
+    "binaryName": "Galvanik-Bad-3D",
+    "resourcesPath": "/resources/",
+    "extensionsPath": "/extensions/",
+    "binaryVersion": "6.3.0",
+    "clientVersion": "6.3.0"
+  }
+}

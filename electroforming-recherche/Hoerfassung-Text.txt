@@ -1,0 +1,71 @@
+Galvanoformung mit Kupfer. Die Hörfassung der Wissensbasis für Jojo. Stand: 25. Oktober 2026.
+
+Teil eins. Das Wichtigste für dein Bad.
+
+Ich habe deine alten Chats mit den Fachquellen verglichen. Für das matte Rosa in den Vertiefungen gibt es wahrscheinlich mehrere Ursachen gleichzeitig.
+
+Erstens: Chlorid. Glanzkupferbäder brauchen etwa 40 bis 100 Milligramm Chlorid pro Liter, meistens 60 bis 70. Unter 20 Milligramm wird die Schicht matt. Wenn du dein Bad selbst mit destilliertem Wasser angesetzt hast, ist kein Chlorid drin. Abhilfe: pro Liter ungefähr ein Zehntel Gramm jodfreies Kochsalz. Für dein Bad mit dreieinhalb Litern also etwa 0,35 Gramm. Nicht mehr, denn zu viel Chlorid bekommt man nur durch Verdünnen wieder heraus. Ob der Tifoo Glanzzusatz genauso reagiert wie die Industrie-Glanzsysteme, sagt Tifoo nicht. Das ist also eine gut begründete Vermutung.
+
+Zweitens: die Säure. Mit 200 Millilitern fünfzehnprozentiger Schwefelsäure pro Liter hast du etwa 30 Gramm Schwefelsäure pro Liter. Üblich sind 50 bis 75 Gramm. Zu wenig Säure führt zu Anbrennen an den Kanten und matten Mulden. Für dein bestehendes Bad mit dreieinhalb Litern wären etwa 210 Milliliter Batteriesäure mit 37 Prozent nötig. Mit deiner fünfzehnprozentigen Säure bräuchtest du etwa 820 Milliliter, und das verdünnt das Kupfer zu stark. Bitte vorher an einer kleinen Probe testen.
+
+Drittens: die Stromdichte. Du hattest 0,56 bis 0,8 Ampere auf einem Blatt mit 72 Quadratzentimetern. Das sind 0,8 bis 1,1 Ampere pro Quadratdezimeter. Tifoo verlangt 1 bis 2 Ampere pro Quadratdezimeter für den Glanz. Du warst also an der Untergrenze, und in den Vertiefungen kommt noch viel weniger an. Zum Glänzen eher 1,5 bis 2 Ampere pro Quadratdezimeter, bei deinem Blatt also 1,1 bis 1,4 Ampere.
+
+Viertens: der Abstand. Ein Zentimeter ist viel zu nah. Kanten und Spitzen ziehen den Strom an und brennen braun an, die Mulden bekommen fast nichts. Besser sind 5 bis 10 Zentimeter, mit Anoden auf beiden Seiten. Die Anodenfläche sollte mindestens doppelt so groß sein wie die Fläche des Blattes.
+
+Fünftens: Anoden und Badbewegung. Empfohlen sind phosphorhaltige Kupferanoden mit etwa 0,04 bis 0,06 Prozent Phosphor, in Anodenbeuteln aus Polypropylen. Keine Kupferrohre und kein Schrott. Außerdem sollte das Bad bewegt werden, zum Beispiel mit einem Aquarium-Luftsprudler oder deiner Schlauchpumpe, oder indem du das Blatt alle 15 bis 30 Minuten drehst.
+
+Ein einfacher Test: Beschichte eine blanke, gereinigte Kupfermünze 10 Minuten lang. Wird sie glänzend, ist das Bad in Ordnung und das Problem liegt am Blatt. Bleibt sie matt rosa, liegt es am Bad.
+
+Teil zwei. Was ist Galvanoformung?
+
+Beim Verkupfern legt man eine dünne Schicht von wenigen tausendstel Millimetern auf einen Gegenstand. Bei der Galvanoformung scheidet man so viel Kupfer ab, meist 0,1 Millimeter oder mehr, dass die Metallschicht selbst stabil ist. Das Modell, auch Kern genannt, bleibt entweder drin, zum Beispiel ein Blatt, eine Muschel oder ein Stein. Oder es wird danach entfernt, zum Beispiel Wachs, eine niedrig schmelzende Legierung oder ein 3D-Druck. Das Prinzip ist dasselbe: Die Kupferanode am Pluspol löst sich auf, und das Kupfer setzt sich am Werkstück am Minuspol ab.
+
+Teil drei. Wie schnell wächst das Kupfer?
+
+Nach dem Faradayschen Gesetz scheidet eine Amperestunde etwa 1,19 Gramm Kupfer ab. Daraus folgt: Bei 1 Ampere pro Quadratdezimeter wächst die Schicht etwa 13 tausendstel Millimeter pro Stunde. Bei 2 Ampere pro Quadratdezimeter etwa 26. Für 0,2 Millimeter brauchst du bei 1,5 Ampere pro Quadratdezimeter etwa 10 Stunden. Tifoo schreibt 60 tausendstel Millimeter pro Stunde. Das ist bei 1 bis 2 Ampere pro Quadratdezimeter physikalisch zu hoch.
+
+Zum Rechnen: Strom in Ampere ist gleich Fläche in Quadratdezimetern mal Stromdichte. Ein Quadratdezimeter sind 100 Quadratzentimeter. Die Fläche immer beidseitig rechnen. Die Fläche eines Blattes schätzt du, indem du den Umriss auf Karopapier zeichnest, die Kästchen zählst und mal zwei nimmst.
+
+Amerikanische Anleitungen rechnen in Ampere pro Quadratzoll. 0,1 Ampere pro Quadratzoll sind 1,55 Ampere pro Quadratdezimeter. 0,05 Ampere pro Quadratzoll sind 0,78.
+
+Teil vier. Das Bad.
+
+Ein saures Kupferbad besteht aus vier Teilen. Kupfersulfat liefert das Kupfer. Schwefelsäure sorgt für Leitfähigkeit und gleichmäßige Verteilung. Chlorid aktiviert die Glanzzusätze. Der Glanzzusatz macht die Schicht feinkörnig, glatt und glänzend.
+
+Mein Rezeptvorschlag für einen Liter neues Bad: 700 bis 750 Milliliter lauwarmes destilliertes Wasser. Dann etwa 130 Milliliter Batteriesäure mit 37 Prozent langsam einrühren. Immer die Säure ins Wasser, nie umgekehrt. Dann 210 bis 220 Gramm Kupfersulfat lösen. Dazu ein Zehntel Gramm Kochsalz. Auf einen Liter auffüllen, abkühlen lassen, filtrieren, und den Glanzzusatz nach Herstellerangabe zugeben, bei Tifoo 4 Milliliter pro Liter.
+
+Faustregel: Kupfersulfat und Schwefelsäure zusammen nicht über 300 Gramm pro Liter. Kristalle am Boden bedeuten, das Bad ist zu konzentriert oder zu kalt.
+
+Teil fünf. Der Glanzzusatz.
+
+Der Glanzzusatz wird mit dem Kupfer eingebaut und verbraucht. Eine amerikanische Faustregel sagt: 10 Milliliter pro 40 Amperestunden. Bei Tifoo gibt es keine Angabe, dort dosiert man nach Aussehen oder nach dem Münztest nach. Ganz wichtig: Aktivkohle entfernt den Glanzzusatz. Für deine Filteranlage also nur Kartuschen aus reinem Polypropylen mit 1 bis 10 Mikrometern verwenden, keine Kohle und keine Baumwolle. Ein Bad ganz ohne Glanzzusatz scheidet übrigens genau matt rosa ab.
+
+Teil sechs. Das Modell vorbereiten.
+
+Blätter zuerst trocknen und stabilisieren, zum Beispiel pressen. Dann mehrmals dünn versiegeln, etwa mit Polyurethan- oder Acryllack, und 6 bis 24 Stunden aushärten lassen. Dann einen Kupferdraht anbringen und über den Draht mitlackieren.
+
+Der Leitlack muss eine durchgehende Fläche bilden. Silberleitlack startet am schnellsten, nach 2 bis 5 Minuten. Kupfer- und Nickellack nach 15 bis 60 Minuten. Graphit kann bis zu 2 Stunden brauchen. Den Lack 12 bis 24 Stunden trocknen lassen, keinen heißen Föhn verwenden. Selbstgemacht geht Graphitlack aus zwei Teelöffeln Graphitpulver und einem Teelöffel Acryl-Glanzlack.
+
+Deine vorverkupferten Blätter vor dem Glanzbad entfetten, gut spülen, kurz in verdünnte Schwefelsäure oder Zitronensäure tauchen, mit destilliertem Wasser spülen und dann mit eingeschaltetem Strom ins Bad hängen.
+
+Teil sieben. Betrieb.
+
+Netzteil auf Konstantstrom stellen. Die Spannung liegt meist zwischen 0,8 und 2,5 Volt. Die ersten ein bis zwei Minuten etwas mehr Strom, dann auf den Zielwert absenken. Temperatur 20 bis 27 Grad. Nach 5 bis 15 Minuten sind kleine matt rosa Inseln normal. Nach 20 bis 30 Minuten sollte fast alles mit mattem Kupfer bedeckt sein. Ein ganzes Blatt dauert insgesamt meist 2 bis 12 Stunden, manchmal bis 24.
+
+Teil acht. Fehlerbilder.
+
+Matt rosa: zu wenig Glanzzusatz, zu wenig Chlorid, zu wenig Strom oder ein zu warmes Bad. Nur die Kanten glänzen: Der Abstand ist zu klein, es ist zu wenig Säure drin, oder das Blatt sollte gedreht werden. Braun und verbrannt: Der Strom ist zu hoch, meist örtlich an den Kanten, dazu fehlt Bewegung. Knötchen und kleine Bäumchen: zu viel Strom. Raue Schicht: Schlamm von der Anode, kein Filter, Leitungswasser. Blaue Kristalle Tage später: Die Versiegelung war undicht.
+
+Teil neun. Nachbearbeitung.
+
+Spülen, Grate entfernen, mit einer Messingbürste oder in einer Trommel polieren. Für Patina die Schwefelleber verdünnt und warm verwenden und in mehreren dünnen Schichten auftragen. Zum Schluss mit Klarlack oder Wachs versiegeln, besonders bei Ringen.
+
+Teil zehn. Sicherheit und Entsorgung.
+
+Schutzbrille und Handschuhe tragen und für gute Lüftung sorgen. Immer die Säure ins Wasser geben. Das Bad ist sehr giftig für Wasserorganismen. Deshalb niemals in den Abfluss oder in den Garten. Auch das Spülwasser sammeln und damit verdunstetes Wasser im Bad ersetzen. Altes Bad, Filter und Anodenschlamm gehören zur Problemstoffsammelstelle oder ins Altstoffsammelzentrum.
+
+Teil elf. Bezugsquellen.
+
+Im deutschsprachigen Raum: Tifoo, Jentner Plating und Real-Gold, dazu Leitlack-Sprays bei eBay. International sind Gateros Plating aus England sowie Rio Grande, Caswell und Midas aus den USA auf Kunst-Galvanoformung spezialisiert.
+
+Alle Quellen mit Links findest du im schriftlichen Dokument. Ende der Hörfassung.

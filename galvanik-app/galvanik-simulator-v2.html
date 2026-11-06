@@ -1,0 +1,502 @@
+<title>Galvanik-Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Kopfzeile, darunter zwei Spalten – links Becken + Detail, rechts Regler + Ergebnis; schmal einspaltig */
+:root {
+  --bg: #f2f4f5; --surface: #ffffff; --fg: #1b2228; --muted: #5a6670; --line: #d5dbe0;
+  --copper: #b5602b; --copper-hi: #d9864f; --bath: #d4eaf5; --bath-deep: #8fc4df;
+  --so4: #47677c; --core: #3e3a35; --good: #2b7a4b; --warn: #9a6200; --bad: #b3261e;
+  --tank: #7d8a94;
+  --f-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10151a; --surface: #182027; --fg: #e5eaed; --muted: #98a4ad; --line: #2b353d;
+  --copper: #d9804a; --copper-hi: #f2a26c; --bath: #15303f; --bath-deep: #24526c;
+  --so4: #9cc2d8; --core: #a39d93; --good: #5cc088; --warn: #e3a83c; --bad: #f2776c;
+  --tank: #6e7b85; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #10151a; --surface: #182027; --fg: #e5eaed; --muted: #98a4ad; --line: #2b353d;
+  --copper: #d9804a; --copper-hi: #f2a26c; --bath: #15303f; --bath-deep: #24526c;
+  --so4: #9cc2d8; --core: #a39d93; --good: #5cc088; --warn: #e3a83c; --bad: #f2776c;
+  --tank: #6e7b85; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 16px; }
+h1 { font-family: var(--f-display); font-weight: 600; font-size: 2.1rem; letter-spacing: .01em; margin: 0; line-height: 1.1; text-wrap: balance; }
+h1 span { color: var(--copper); }
+.sub { color: var(--muted); margin: 0; }
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 1.25rem; margin: 0 0 10px; letter-spacing: .02em; }
+.label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+
+/* Becken */
+.steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.step { font: inherit; font-size: .85rem; border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.step b { font-family: var(--f-mono); font-weight: 500; color: var(--copper); margin-right: 4px; }
+.step[aria-pressed="true"] { border-color: var(--copper); background: color-mix(in srgb, var(--copper) 14%, var(--surface)); }
+.step:focus-visible, .part:focus-visible, input:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+svg#bath { width: 100%; height: auto; display: block; }
+.part { cursor: pointer; }
+.part .hit { fill: transparent; stroke: transparent; stroke-width: 2; stroke-dasharray: 5 4; }
+.part:hover .hit { stroke: var(--muted); }
+.part.sel .hit { stroke: var(--copper); }
+.svgtxt { font-family: var(--f-body); font-size: 12px; fill: var(--muted); }
+.svgval { font-family: var(--f-mono); font-size: 13px; fill: var(--fg); }
+.hint { font-size: .85rem; color: var(--muted); margin: 6px 0 0; }
+
+.detail h3 { font-family: var(--f-display); font-weight: 600; font-size: 1.15rem; margin: 0 0 6px; }
+.detail p { margin: 0 0 8px; max-width: 68ch; }
+.detail .eq { font-family: var(--f-mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; display: inline-block; margin: 2px 0 8px; font-size: .9rem; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 4px 0 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+/* Regler */
+.ctrl { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.ctrl:first-of-type { border-top: 0; padding-top: 0; }
+.ctrl label { font-weight: 600; }
+.ctrl .num { display: flex; align-items: center; gap: 6px; }
+.ctrl input[type=number] { width: 84px; font: inherit; font-family: var(--f-mono); padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); text-align: right; }
+.ctrl .unit { color: var(--muted); font-size: .85rem; min-width: 34px; }
+.ctrl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--copper); }
+.ctrl small { grid-column: 1 / -1; color: var(--muted); font-size: .8rem; }
+
+/* Ergebnis */
+.big { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.big .v { font-family: var(--f-display); font-weight: 600; font-size: 3rem; line-height: 1; color: var(--copper); font-variant-numeric: tabular-nums; }
+.big .u { font-size: 1.1rem; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip.good { color: var(--good); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.bars { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.bar { display: grid; grid-template-columns: 82px minmax(0, 1fr) 76px; gap: 8px; align-items: center; font-size: .9rem; }
+.track { position: relative; height: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; }
+.fill { position: absolute; inset: 0 auto 0 0; background: var(--copper); border-radius: 2px; transition: width .2s; }
+.mark { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed var(--fg); opacity: .55; }
+.bar .mono { text-align: right; }
+.axis { display: grid; grid-template-columns: 82px minmax(0, 1fr) 76px; gap: 8px; font-size: .75rem; color: var(--muted); }
+.axis div:nth-child(2) { display: flex; justify-content: space-between; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.stats .val { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+.warns { margin: 12px 0 0; padding-left: 18px; font-size: .9rem; }
+.warns li { margin-bottom: 4px; }
+.formula { font-family: var(--f-mono); font-size: .82rem; color: var(--muted); overflow-x: auto; white-space: nowrap; margin-top: 12px; padding: 8px 10px; background: var(--bg); border-radius: 6px; border: 1px solid var(--line); }
+.assume { font-size: .88rem; color: var(--muted); }
+.assume ul { margin: 6px 0 0; padding-left: 18px; }
+.assume li { margin-bottom: 3px; max-width: 75ch; }
+@media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Galvanik-<span>Simulator</span></h1>
+    <p class="sub">Kupferabscheidung im sauren Kupferbad · vereinfachtes Modell, Version 2</p>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel" aria-label="Querschnitt des Beckens">
+        <div class="steps" id="steps" role="group" aria-label="Prozessteile"></div>
+        <svg id="bath" viewBox="0 0 600 390" role="img" aria-label="Querschnitt: zwei Kupferanoden, Werkstück in der Mitte, Elektrolyt mit wandernden Ionen">
+          <defs>
+            <linearGradient id="gBath" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="var(--bath)"/><stop offset="1" stop-color="var(--bath-deep)"/>
+            </linearGradient>
+          </defs>
+          <!-- Elektrolyt -->
+          <g class="part" data-part="elektrolyt" tabindex="0" role="button" aria-label="Elektrolyt">
+            <rect class="hit" x="72" y="108" width="456" height="250" rx="2"/>
+            <rect x="74" y="112" width="452" height="244" fill="url(#gBath)" opacity=".9"/>
+            <path d="M74 112 q 28 -4 56 0 t 56 0 t 56 0 t 56 0 t 56 0 t 56 0 t 56 0 t 60 0" fill="none" stroke="var(--bath-deep)" stroke-width="1.5"/>
+          </g>
+          <!-- Becken -->
+          <path d="M70 84 V360 H530 V84" fill="none" stroke="var(--tank)" stroke-width="4" stroke-linejoin="round"/>
+          <text class="svgtxt" x="518" y="350" text-anchor="end">Becken (PP/Glas)</text>
+          <text class="svgtxt" x="74" y="76" id="tLabel">Bad 22 °C</text>
+
+          <!-- Ionen -->
+          <g class="part" data-part="ionen" tabindex="0" role="button" aria-label="Ionenwanderung">
+            <rect class="hit" id="ionHitL" x="140" y="128" width="130" height="210"/>
+            <rect class="hit" id="ionHitR" x="330" y="128" width="130" height="210"/>
+            <g id="ions"></g>
+          </g>
+
+          <!-- Netzteil -->
+          <g class="part" data-part="netzteil" tabindex="0" role="button" aria-label="Netzteil">
+            <rect class="hit" x="236" y="2" width="128" height="62" rx="6"/>
+            <rect x="240" y="6" width="120" height="54" rx="5" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.5"/>
+            <rect x="252" y="14" width="96" height="24" rx="3" fill="var(--bg)" stroke="var(--line)"/>
+            <text class="svgval" x="300" y="31" text-anchor="middle" id="psuVal">1,10 A</text>
+            <text class="svgtxt" x="300" y="53" text-anchor="middle">Netzteil</text>
+            <text x="248" y="53" font-size="14" font-weight="700" fill="var(--bad)">+</text>
+            <text x="346" y="53" font-size="14" font-weight="700" fill="var(--bad)">+</text>
+          </g>
+          <!-- Kabel -->
+          <path id="wireL" d="M240 33 H121 V98" fill="none" stroke="var(--bad)" stroke-width="2"/>
+          <path id="wireR" d="M360 33 H479 V98" fill="none" stroke="var(--bad)" stroke-width="2"/>
+          <path d="M300 60 V136" fill="none" stroke="var(--so4)" stroke-width="2"/>
+          <text x="306" y="78" font-size="14" font-weight="700" fill="var(--so4)">−</text>
+
+          <!-- Anoden -->
+          <g class="part" data-part="anode" tabindex="0" role="button" aria-label="Anoden">
+            <rect class="hit" id="anHitL" x="104" y="92" width="34" height="246"/>
+            <rect class="hit" id="anHitR" x="462" y="92" width="34" height="246"/>
+            <rect id="anL" x="110" y="98" width="22" height="234" rx="2" fill="var(--copper)"/>
+            <rect id="anR" x="468" y="98" width="22" height="234" rx="2" fill="var(--copper)"/>
+            <text class="svgtxt" id="anLblL" x="121" y="215" text-anchor="middle" dominant-baseline="central" style="fill:var(--surface)">Anode</text>
+            <text class="svgtxt" id="anLblR" x="479" y="215" text-anchor="middle" dominant-baseline="central" style="fill:var(--surface)">Anode</text>
+          </g>
+          <!-- Elektrodenabstand -->
+          <g class="part" data-part="abstand" tabindex="0" role="button" aria-label="Elektrodenabstand">
+            <rect class="hit" id="dimHit" x="132" y="334" width="160" height="26"/>
+            <path id="dimLine" d="" fill="none" stroke="var(--fg)" stroke-width="1.2"/>
+            <text class="svgval" id="dimTxt" x="210" y="356" text-anchor="middle"></text>
+          </g>
+
+          <!-- Werkstück -->
+          <g class="part" data-part="kathode" tabindex="0" role="button" aria-label="Werkstück (Kathode)">
+            <rect class="hit" x="268" y="130" width="64" height="210"/>
+            <polygon id="layer" fill="var(--copper-hi)"/>
+            <polygon id="core" fill="var(--core)"/>
+          </g>
+          <!-- Schicht-Beschriftungen -->
+          <g class="part" id="lblGrp" data-part="schicht" tabindex="0" role="button" aria-label="Kupferschicht">
+            <rect class="hit" x="334" y="132" width="100" height="206"/>
+            <line x1="318" y1="146" x2="346" y2="146" stroke="var(--muted)"/>
+            <text class="svgtxt" x="350" y="150">Kante</text>
+            <text class="svgval" x="350" y="165" id="lblEdge"></text>
+            <line x1="318" y1="203" x2="346" y2="214" stroke="var(--muted)"/>
+            <text class="svgtxt" x="350" y="218">Vertiefung</text>
+            <text class="svgval" x="350" y="233" id="lblRec"></text>
+            <line x1="318" y1="245" x2="346" y2="268" stroke="var(--muted)"/>
+            <text class="svgtxt" x="350" y="272">Fläche</text>
+            <text class="svgval" x="350" y="287" id="lblMid"></text>
+          </g>
+          <text class="svgtxt" x="300" y="378" text-anchor="middle">Werkstück (Kathode)</text>
+        </svg>
+        <p class="hint">Teile im Bild oder oben in der Leiste anklicken. Die Kupferschicht am Werkstück ist zur Sichtbarkeit stark vergrößert gezeichnet.</p>
+      </section>
+
+      <section class="panel detail" id="detail" aria-live="polite"></section>
+    </div>
+
+    <div class="col">
+      <section class="panel" aria-label="Parameter">
+        <h2>Parameter</h2>
+        <div class="ctrl">
+          <label for="iR">Stromstärke</label>
+          <span class="num"><input type="number" id="iN" min="0.05" max="6" step="0.05" aria-label="Stromstärke in Ampere"><span class="unit">A</span></span>
+          <input type="range" id="iR" min="0.05" max="6" step="0.05" aria-label="Stromstärke">
+        </div>
+        <div class="ctrl">
+          <label for="tR">Abscheidezeit</label>
+          <span class="num"><input type="number" id="tN" min="0.25" max="48" step="0.25" aria-label="Abscheidezeit in Stunden"><span class="unit">h</span></span>
+          <input type="range" id="tR" min="0.25" max="48" step="0.25" aria-label="Abscheidezeit">
+          <small id="tHint"></small>
+        </div>
+        <div class="ctrl">
+          <label for="TR">Badtemperatur</label>
+          <span class="num"><input type="number" id="TN" min="12" max="40" step="1" aria-label="Badtemperatur in Grad Celsius"><span class="unit">°C</span></span>
+          <input type="range" id="TR" min="12" max="40" step="1" aria-label="Badtemperatur">
+        </div>
+        <div class="ctrl">
+          <label for="aR">Fläche des Werkstücks</label>
+          <span class="num"><input type="number" id="aN" min="5" max="500" step="1" aria-label="Fläche in Quadratzentimeter"><span class="unit">cm²</span></span>
+          <input type="range" id="aR" min="5" max="500" step="1" aria-label="Fläche">
+          <small>Gesamte leitende Fläche, also beide Seiten. Beispiel: Blatt 6 × 6 cm ≈ 72 cm².</small>
+        </div>
+        <div class="ctrl">
+          <label for="dR">Elektrodenabstand</label>
+          <span class="num"><input type="number" id="dN" min="1" max="15" step="0.5" aria-label="Elektrodenabstand in Zentimeter"><span class="unit">cm</span></span>
+          <input type="range" id="dR" min="1" max="15" step="0.5" aria-label="Elektrodenabstand">
+          <small>Abstand von jeder Anode zum Werkstück. Empfohlen sind etwa 5–10 cm.</small>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Ergebnis">
+        <div class="label">Berechnete Schichtdicke (Durchschnitt)</div>
+        <div class="big"><span class="v" id="dMain">–</span><span class="u">µm</span><span class="u" id="dMm"></span></div>
+        <div class="chips" id="chips"></div>
+
+        <div class="bars" id="bars"></div>
+        <div class="axis"><div></div><div><span>0</span><span id="axMax"></span></div><div></div></div>
+
+        <div class="stats">
+          <div><div class="label">Stromdichte</div><div class="val" id="sJ"></div></div>
+          <div><div class="label">Stromausbeute</div><div class="val" id="sEta"></div></div>
+          <div><div class="label">Kupfer abgeschieden</div><div class="val" id="sM"></div></div>
+          <div><div class="label">Zuwachs pro Stunde</div><div class="val" id="sRate"></div></div>
+          <div><div class="label">Ladungsmenge</div><div class="val" id="sQ"></div></div>
+          <div><div class="label">Vertiefung 0,1 mm nach</div><div class="val" id="s100"></div></div>
+        </div>
+        <ul class="warns" id="warns"></ul>
+        <div class="formula" id="formula"></div>
+      </section>
+
+      <section class="panel assume">
+        <h2>Annahmen des Modells</h2>
+        <ul>
+          <li>Saures Kupferbad (Kupfersulfat, Schwefelsäure, Chlorid, Glanzzusatz), Cu²⁺ mit 2 Elektronen, 1,186 g Kupfer pro Amperestunde, Dichte 8,96 g/cm³.</li>
+          <li>Stromausbeute ca. 98 %. Sie sinkt erst, wenn die Stromdichte nahe an die Grenze kommt (ohne Badbewegung ca. 3 A/dm² bei 22 °C, wärmer etwas mehr).</li>
+          <li>Stromverteilung grob geschätzt: Kanten bekommen mehr, Vertiefungen weniger. Je höher die Stromdichte, desto stärker der Unterschied. Echte Werte hängen stark von Form, Anodenabstand und Badbewegung ab.</li>
+          <li>Anoden auf beiden Seiten im gleichen Abstand, beide Seiten des Werkstücks gleich behandelt. Badbewegung und Badzusammensetzung sind in dieser Version fest.</li>
+          <li>Elektrodenabstand: Er ändert die Durchschnittsdicke nicht, weil das Netzteil den Strom vorgibt. Er ändert aber die Verteilung. Je näher die Anode, desto stärker bekommen Kanten mehr und Vertiefungen weniger (Faustformel: Unterschied wächst mit 1/√Abstand, bezogen auf 5 cm). Die Spannung ist grob mit einer Leitfähigkeit von 0,3 S/cm bei 22 °C plus 0,4 V an den Elektroden geschätzt.</li>
+          <li>Die Bereiche für Glanz und Temperatur sind Faustwerte aus Hobby- und Herstellerangaben, keine Garantie.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const M = 63.546, Z = 2, F = 96485, RHO = 8.96;
+  const S = { I: 1.1, t: 5, T: 22, A: 72, D: 5 };
+  let FACE = 14 + S.D * 10.5;
+  let selected = "kathode";
+  const $ = id => document.getElementById(id);
+  const nf = (v, d = 0) => v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtH = h => { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return mm === 60 ? `${hh + 1} h` : (hh ? `${hh} h ` : "") + (mm ? `${mm} min` : (hh ? "" : "0 min")); };
+
+  function model(s) {
+    const j = s.I / (s.A / 100);                          // A/dm²
+    const jMax = Math.max(1.5, 3.0 * (1 + 0.025 * (s.T - 22)));
+    const r = j / jMax;
+    const eta = r <= 0.8 ? 0.98 : Math.max(0.6, 0.98 - 0.35 * (r - 0.8));
+    const Q = s.I * s.t * 3600;                           // C
+    const mAnode = Q * M / (Z * F);                       // g
+    const m = mAnode * eta;
+    const d = m / (RHO * s.A) * 1e4;                      // µm
+    const rc = Math.min(r, 1.5);
+    const tf = Math.min(1.2, Math.max(0.8, 1 - 0.01 * (s.T - 22)));
+    const kd = Math.sqrt(5 / s.D);                       // Abstandseinfluss, 5 cm = 1
+    const edge = Math.min(3, 1 + (0.25 + 0.25 * rc) * tf * kd);
+    const rec = Math.max(0.1, 1 - (0.25 + 0.2 * rc) * tf * kd);
+    const kappa = 0.3 * (1 + 0.015 * (s.T - 22));        // S/cm
+    const U = 0.4 + (j / 100) * s.D / kappa;              // V
+    const rate = d / s.t;
+    return { j, jMax, r, eta, Q, m, mAnode, d, edge, rec, rate, kd, U, jEdge: j * edge, t100: 100 / (rate * rec) };
+  }
+
+  function status(s, o) {
+    const chips = [], warns = [];
+    if (o.r > 1) { chips.push(["bad", "Stromdichte zu hoch"]); warns.push("Über der Grenzstromdichte: Kanten brennen braun an, es entsteht Wasserstoff, die Stromausbeute sinkt. Strom senken oder Fläche größer."); }
+    else if (o.r > 0.8) { chips.push(["warn", "Stromdichte hoch"]); warns.push("Nahe an der Grenze: Kanten können anbrennen. Badbewegung hilft, sonst Strom etwa 20 % senken."); }
+    else if (o.j >= 1) chips.push(["good", "Stromdichte im Glanzbereich"]);
+    else if (o.j >= 0.5) { chips.push(["warn", "Stromdichte niedrig"]); warns.push("Unter 1 A/dm² bleiben Vertiefungen bei Glanzbädern oft matt oder rosa."); }
+    else { chips.push(["warn", "Stromdichte sehr niedrig"]); warns.push("Sehr langsamer Aufbau, eher matte Schicht."); }
+    if (o.r <= 1 && o.jEdge > o.jMax) { chips.push(["warn", "Kanten brennen an"]); warns.push(`An den Kanten liegen etwa ${nf(o.jEdge, 1)} A/dm² an, mehr als die Grenze von ${nf(o.jMax, 1)} A/dm². Abstand vergrößern oder Strom senken.`); }
+    if (s.D < 3) { chips.push(["warn", "Anode sehr nah"]); warns.push("Unter 3 cm Abstand wird die Verteilung sehr ungleich: Kanten dick und braun, Vertiefungen dünn und matt."); }
+    else if (s.D > 12) warns.push("Großer Abstand gibt gleichmäßige Schichten, braucht aber mehr Spannung.");
+    if (s.T < 18) { chips.push(["warn", "Bad kalt"]); warns.push("Unter 18 °C kann Kupfersulfat auskristallisieren, Glanz und Streufähigkeit werden schlechter."); }
+    else if (s.T > 32) { chips.push(["bad", "Bad zu warm"]); warns.push("Über 32 °C zersetzt sich der Glanzzusatz schnell."); }
+    else if (s.T > 28) { chips.push(["warn", "Bad warm"]); warns.push("Über 28 °C verbraucht sich der Glanzzusatz schneller."); }
+    else chips.push(["good", "Temperatur gut"]);
+    if (o.d * o.rec >= 100) chips.push(["good", "Vertiefungen ≥ 0,1 mm"]);
+    return { chips, warns };
+  }
+
+  /* Werkstück-Querschnitt */
+  const CX = 300, Y0 = 140, Y1 = 330, RECS = [{ y: 205, a: 9 }, { y: 268, a: -8 }];
+  function drawPiece(o) {
+    const px = Math.min(16, o.d / 400 * 16) + 0.4;
+    const L = [], R = [], cl = [], cr = [];
+    for (let i = 0; i <= 80; i++) {
+      const y = Y0 + (Y1 - Y0) * i / 80;
+      let x = CX, f = 1;
+      for (const k of RECS) { const g = Math.exp(-(((y - k.y) / 16) ** 2)); x += k.a * g; f *= 1 - (1 - o.rec) * g; }
+      const dEnd = Math.min(y - Y0, Y1 - y);
+      f *= 1 + (o.edge - 1) * Math.exp(-((dEnd / 9) ** 2));
+      const core = 1.8, w = Math.min(core + px * f, FACE - 14), cap = dEnd < 1 ? 0 : 1;
+      L.push(`${(x - w).toFixed(1)},${y.toFixed(1)}`); R.unshift(`${(x + w).toFixed(1)},${y.toFixed(1)}`);
+      cl.push(`${(x - core * cap).toFixed(1)},${y.toFixed(1)}`); cr.unshift(`${(x + core * cap).toFixed(1)},${y.toFixed(1)}`);
+    }
+    const e = px * o.edge;
+    $("layer").setAttribute("points", [`${CX},${Y0 - e}`, ...L, `${CX},${Y1 + e}`, ...R].join(" "));
+    $("core").setAttribute("points", [...cl, ...cr].join(" "));
+  }
+
+  /* Ionen */
+  const ions = [], g = $("ions"), NS = "http://www.w3.org/2000/svg";
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function mk(kind, side) {
+    const el = document.createElementNS(NS, "circle");
+    el.setAttribute("r", kind === "cu" ? 4 : 3);
+    el.setAttribute("fill", kind === "cu" ? "var(--copper)" : "var(--so4)");
+    if (kind === "cu") { el.setAttribute("stroke", "var(--surface)"); el.setAttribute("stroke-width", "1"); }
+    g.appendChild(el);
+    const p = { el, kind, side, x: 0, y: 0 };
+    reset(p, true); ions.push(p);
+  }
+  // side -1: linke Hälfte, +1: rechte Hälfte. Cu²⁺ wandert zur Mitte, SO₄²⁻ nach außen.
+  function reset(p, rand) {
+    const near = p.side < 0 ? 300 - FACE + 4 : 300 + FACE - 4, far = p.side < 0 ? 288 : 312;
+    const [a, b] = p.kind === "cu" ? [near, far] : [far, near];
+    p.from = a; p.to = b; p.y = 130 + Math.random() * 200;
+    p.x = rand ? a + (b - a) * Math.random() : a;
+  }
+  for (let i = 0; i < 18; i++) { mk("cu", -1); mk("cu", 1); }
+  for (let i = 0; i < 7; i++) { mk("so4", -1); mk("so4", 1); }
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const v = 12 + 22 * Math.sqrt(S.I);
+    for (const p of ions) {
+      const dir = Math.sign(p.to - p.from), sp = (p.kind === "cu" ? v : v * 0.6) * dir;
+      p.x += sp * dt;
+      p.y += (Math.random() - 0.5) * 18 * dt;
+      if ((dir > 0 && p.x >= p.to) || (dir < 0 && p.x <= p.to)) reset(p, false);
+      p.el.setAttribute("cx", p.x.toFixed(1)); p.el.setAttribute("cy", p.y.toFixed(1));
+    }
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* Prozessteile */
+  const PARTS = [
+    ["netzteil", "Netzteil"], ["anode", "Anode"], ["elektrolyt", "Elektrolyt"],
+    ["ionen", "Ionenwanderung"], ["kathode", "Werkstück"], ["schicht", "Schicht"], ["abstand", "Abstand"]
+  ];
+  const steps = $("steps");
+  PARTS.forEach(([k, n], i) => {
+    const b = document.createElement("button");
+    b.className = "step"; b.type = "button"; b.dataset.part = k; b.id = "step-" + k;
+    b.innerHTML = k === "abstand" ? n : `<b>${i + 1}</b>${n}`;
+    b.addEventListener("click", () => select(k));
+    steps.appendChild(b);
+  });
+  document.querySelectorAll("svg .part").forEach(el => {
+    el.addEventListener("click", () => select(el.dataset.part));
+    el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(el.dataset.part); } });
+  });
+  function select(k) { selected = k; renderDetail(model(S)); }
+
+  function renderDetail(o) {
+    document.querySelectorAll(".step").forEach(b => b.setAttribute("aria-pressed", b.dataset.part === selected));
+    document.querySelectorAll("svg .part").forEach(el => el.classList.toggle("sel", el.dataset.part === selected));
+    const dl = rows => `<dl class="kv">${rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>`;
+    const D = {
+      netzteil: `<h3>Netzteil (Gleichstrom)</h3>
+        <p>Der Pluspol hängt an den Kupferanoden, der Minuspol am Werkstück. Eingestellt wird die Stromstärke. Entscheidend für die Schicht ist aber die Stromdichte, also Strom pro Fläche.</p>
+        <span class="eq">j = I / A</span>
+        ${dl([["Stromstärke", nf(S.I, 2) + " A"], ["Fläche", nf(S.A) + " cm² = " + nf(S.A / 100, 2) + " dm²"], ["Stromdichte", nf(o.j, 2) + " A/dm²"], ["Strom für 1,5 A/dm²", nf(S.A / 100 * 1.5, 2) + " A"], ["Spannung (grob)", "ca. " + nf(o.U, 1) + " V bei " + nf(S.D, 1) + " cm Abstand"]])}`,
+      abstand: `<h3>Elektrodenabstand</h3>
+        <p>Das Netzteil gibt den Strom vor, deshalb bleibt die Durchschnittsdicke gleich, egal wie weit die Anoden weg sind. Der Abstand entscheidet aber, wie gleichmäßig sich der Strom verteilt. Ist die Anode nah, ist der Weg zur Kante viel kürzer als der Weg in eine Vertiefung. Bei großem Abstand fällt dieser Unterschied kaum noch ins Gewicht.</p>
+        <span class="eq">Unterschied ∝ 1 / √Abstand</span>
+        ${dl([["Abstand", nf(S.D, 1) + " cm je Seite"], ["Verteilungsfaktor", "× " + nf(o.kd, 2) + " (5 cm = 1)"], ["Kante / Vertiefung", nf(o.edge, 2) + " / " + nf(o.rec, 2)], ["Stromdichte an der Kante", nf(o.jEdge, 2) + " A/dm²"], ["Spannung (grob)", "ca. " + nf(o.U, 1) + " V"]])}`,
+      anode: `<h3>Anoden (Kupfer, Pluspol)</h3>
+        <p>An der Anode gibt Kupfer zwei Elektronen ab und geht als Ion in Lösung. So bleibt der Kupfergehalt im Bad ungefähr gleich. Phosphorhaltige Anoden in einem Beutel halten Anodenschlamm vom Werkstück fern.</p>
+        <span class="eq">Cu → Cu²⁺ + 2 e⁻</span>
+        ${dl([["Kupfer gelöst", nf(o.mAnode, 2) + " g"], ["Anodenausbeute", "≈ 100 % (Annahme)"]])}`,
+      elektrolyt: `<h3>Elektrolyt (saures Kupferbad)</h3>
+        <p>Die blaue Lösung leitet den Strom über Ionen. Schwefelsäure verbessert die Leitfähigkeit und hilft, dass auch Vertiefungen Strom bekommen. Chlorid und Glanzzusatz sorgen für feine, glänzende Kristalle.</p>
+        ${dl([["Kupfersulfat-Pentahydrat", "ca. 200–240 g/L"], ["Schwefelsäure", "ca. 50–75 g/L"], ["Chlorid", "ca. 60 mg/L"], ["Glanzzusatz", "nach Hersteller"], ["Badtemperatur", nf(S.T) + " °C (gut: 18–28 °C)"]])}`,
+      ionen: `<h3>Ionenwanderung</h3>
+        <p>Im elektrischen Feld wandern die Kupferionen (kupferfarben) zum Werkstück, die Sulfationen (klein, blau) zu den Anoden. Je höher der Strom, desto schneller der Transport. Die Ladungsmenge bestimmt, wie viel Kupfer insgesamt wandert.</p>
+        <span class="eq">Q = I · t</span>
+        ${dl([["Ladungsmenge", nf(o.Q) + " C = " + nf(S.I * S.t, 2) + " Ah"], ["Kupfer in Mol", nf(o.Q / (Z * F), 4) + " mol"], ["Grenzstromdichte (geschätzt)", nf(o.jMax, 1) + " A/dm²"]])}`,
+      kathode: `<h3>Werkstück (Kathode, Minuspol)</h3>
+        <p>Am Werkstück nehmen die Kupferionen zwei Elektronen auf und werden zu metallischem Kupfer. Ist die Stromdichte zu hoch, kommen nicht genug Ionen nach. Dann entsteht zusätzlich Wasserstoff und die Stromausbeute sinkt.</p>
+        <span class="eq">Cu²⁺ + 2 e⁻ → Cu</span>
+        ${dl([["Fläche", nf(S.A) + " cm²"], ["Stromdichte", nf(o.j, 2) + " A/dm²"], ["Stromausbeute", nf(o.eta * 100, 0) + " %"], ["Kupfer abgeschieden", nf(o.m, 2) + " g"]])}`,
+      schicht: `<h3>Kupferschicht und Stromverteilung</h3>
+        <p>Der Strom nimmt den kürzesten Weg. Kanten und Spitzen ragen ins Feld und bekommen mehr, Vertiefungen liegen im Schatten und bekommen weniger. Je näher die Anode, desto stärker der Effekt. Für ein selbsttragendes Stück rechnet man mit etwa 0,1 mm, und zwar dort, wo es am dünnsten ist.</p>
+        ${dl([["Kante", nf(o.d * o.edge) + " µm (× " + nf(o.edge, 2) + ")"], ["Fläche", nf(o.d) + " µm"], ["Vertiefung", nf(o.d * o.rec) + " µm (× " + nf(o.rec, 2) + ")"], ["Vertiefung 100 µm nach", fmtH(o.t100)]])}`
+    };
+    $("detail").innerHTML = D[selected];
+  }
+
+  /* Anodenlage aus dem Abstand: 1 cm ≈ 24 px, 15 cm ≈ 170 px */
+  function layout() {
+    FACE = 14 + S.D * 10.5;
+    const lx = 300 - FACE - 22, rx = 300 + FACE;
+    $("anL").setAttribute("x", lx); $("anR").setAttribute("x", rx);
+    $("anHitL").setAttribute("x", lx - 6); $("anHitR").setAttribute("x", rx - 6);
+    for (const [id, x] of [["anLblL", lx + 11], ["anLblR", rx + 11]]) { $(id).setAttribute("x", x); $(id).setAttribute("transform", `rotate(-90 ${x} 215)`); }
+    $("wireL").setAttribute("d", `M240 33 H${lx + 11} V98`);
+    $("wireR").setAttribute("d", `M360 33 H${rx + 11} V98`);
+    const a = 300 - FACE, b = 292;
+    $("ionHitL").setAttribute("x", a + 4); $("ionHitL").setAttribute("width", Math.max(0, b - a - 8));
+    $("ionHitR").setAttribute("x", 308); $("ionHitR").setAttribute("width", Math.max(0, b - a - 8));
+    const lx0 = FACE >= 100 ? 350 : 300 + FACE + 30;   // Beschriftung neben oder hinter der rechten Anode
+    document.querySelectorAll("#lblGrp text").forEach(t => t.setAttribute("x", lx0));
+    document.querySelectorAll("#lblGrp line").forEach(l => l.setAttribute("x2", lx0 - 4));
+    document.querySelector("#lblGrp .hit").setAttribute("x", lx0 - 16);
+    $("dimLine").setAttribute("d", `M${a} 344 H${b} M${a} 339 V349 M${b} 339 V349`);
+    $("dimHit").setAttribute("x", a); $("dimHit").setAttribute("width", b - a);
+    $("dimTxt").setAttribute("x", (a + b) / 2);
+    $("dimTxt").textContent = nf(S.D, S.D % 1 ? 1 : 0) + " cm";
+    for (const p of ions) {
+      const lo = 300 - FACE, hi = 300 + FACE;
+      if (p.x < lo || p.x > hi) reset(p, true);
+    }
+  }
+
+  function render() {
+    layout();
+    const o = model(S);
+    $("psuVal").textContent = nf(S.I, 2) + " A";
+    $("tLabel").textContent = "Bad " + nf(S.T) + " °C";
+    $("dMain").textContent = nf(o.d, o.d < 10 ? 1 : 0);
+    $("dMm").textContent = "= " + nf(o.d / 1000, 3) + " mm";
+    $("lblEdge").textContent = nf(o.d * o.edge) + " µm";
+    $("lblRec").textContent = nf(o.d * o.rec) + " µm";
+    $("lblMid").textContent = nf(o.d) + " µm";
+    const st = status(S, o);
+    $("chips").innerHTML = st.chips.map(([c, t]) => `<span class="chip ${c}">${t}</span>`).join("");
+    $("warns").innerHTML = st.warns.map(w => `<li>${w}</li>`).join("");
+    $("warns").hidden = !st.warns.length;
+
+    const vals = [["Kante", o.d * o.edge], ["Fläche", o.d], ["Vertiefung", o.d * o.rec]];
+    const steps = [25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000];
+    const need = Math.max(120, o.d * o.edge * 1.05);
+    const max = steps.find(s => s >= need) || Math.ceil(need / 1000) * 1000;
+    $("axMax").textContent = nf(max) + " µm";
+    const mk = (100 / max * 100).toFixed(1);
+    $("bars").innerHTML = vals.map(([n, v]) => `<div class="bar"><span>${n}</span>
+      <div class="track"><div class="fill" style="width:${Math.min(100, v / max * 100).toFixed(1)}%"></div>
+      <div class="mark" style="left:${mk}%" title="0,1 mm: selbsttragend"></div></div>
+      <span class="mono">${nf(v)} µm</span></div>`).join("") +
+      `<div class="hint">Gestrichelt: 0,1 mm, ab hier ist ein Blatt etwa selbsttragend.</div>`;
+
+    $("sJ").textContent = nf(o.j, 2) + " A/dm²";
+    $("sEta").textContent = nf(o.eta * 100) + " %";
+    $("sM").textContent = nf(o.m, 2) + " g";
+    $("sRate").textContent = nf(o.rate, 1) + " µm/h";
+    $("sQ").textContent = nf(S.I * S.t, 2) + " Ah";
+    $("s100").textContent = fmtH(o.t100);
+    $("tHint").textContent = fmtH(S.t);
+    $("formula").textContent =
+      `d = I·t·η·M / (z·F·ρ·A) = ${nf(S.I, 2)} A · ${nf(S.t * 3600)} s · ${nf(o.eta, 2)} · 63,55 g/mol / (2 · 96 485 C/mol · 8,96 g/cm³ · ${nf(S.A)} cm²) = ${nf(o.d / 1e4, 4)} cm = ${nf(o.d, 1)} µm`;
+    drawPiece(o);
+    renderDetail(o);
+  }
+
+  [["I", "i"], ["t", "t"], ["T", "T"], ["A", "a"], ["D", "d"]].forEach(([k, p]) => {
+    const r = $(p + "R"), n = $(p + "N");
+    r.value = n.value = S[k];
+    r.addEventListener("input", () => { S[k] = +r.value; n.value = r.value; render(); });
+    n.addEventListener("input", () => {
+      const v = parseFloat(n.value.replace(",", "."));
+      if (!isFinite(v)) return;
+      S[k] = Math.min(+n.max, Math.max(+n.min, v)); r.value = S[k]; render();
+    });
+    n.addEventListener("change", () => { n.value = S[k]; });
+  });
+  render();
+})();
+</script>

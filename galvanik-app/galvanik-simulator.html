@@ -1,0 +1,705 @@
+<title>Galvanik-Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Werkbank-Ansicht. Links das große interaktive Bild mit Ergebnis darunter, rechts der Teile-Editor; schmal einspaltig */
+:root {
+  --bg: #f2f4f5; --surface: #ffffff; --fg: #1b2228; --muted: #5a6670; --line: #d5dbe0;
+  --copper: #b5602b; --shiny: #e08a4f; --matte: #e8a796; --burnt: #5c3018;
+  --bath: #d4eaf5; --bath-deep: #7fbadb; --so4: #47677c; --core: #3e3a35; --tank: #7d8a94;
+  --good: #2b7a4b; --warn: #9a6200; --bad: #b3261e; --plus: #c0362c; --minus: #2c3a44;
+  --lcd: #1d2b24; --lcd-fg: #7ff0a8; --cold: #6aa6c8; --hot: #e2572b; --iso: #2f3a44;
+  --f-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10151a; --surface: #182027; --fg: #e5eaed; --muted: #98a4ad; --line: #2b353d;
+  --copper: #d9804a; --shiny: #f2a26c; --matte: #d18f80; --burnt: #8e4f2b;
+  --bath: #15303f; --bath-deep: #24526c; --so4: #9cc2d8; --core: #a39d93; --tank: #6e7b85;
+  --good: #5cc088; --warn: #e3a83c; --bad: #f2776c; --plus: #f0675c; --minus: #a9bccb;
+  --lcd: #0b1410; --lcd-fg: #7ff0a8; --cold: #4f8db0; --hot: #f06a3a; --iso: #8da0ae; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #10151a; --surface: #182027; --fg: #e5eaed; --muted: #98a4ad; --line: #2b353d;
+  --copper: #d9804a; --shiny: #f2a26c; --matte: #d18f80; --burnt: #8e4f2b;
+  --bath: #15303f; --bath-deep: #24526c; --so4: #9cc2d8; --core: #a39d93; --tank: #6e7b85;
+  --good: #5cc088; --warn: #e3a83c; --bad: #f2776c; --plus: #f0675c; --minus: #a9bccb;
+  --lcd: #0b1410; --lcd-fg: #7ff0a8; --cold: #4f8db0; --hot: #f06a3a; --iso: #8da0ae; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 18px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 14px; }
+h1 { font-family: var(--f-display); font-weight: 600; font-size: 2.1rem; margin: 0; line-height: 1.1; }
+h1 span { color: var(--copper); }
+.sub { color: var(--muted); margin: 2px 0 0; }
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 1.3rem; margin: 0 0 6px; letter-spacing: .02em; }
+.label { font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+button { font: inherit; }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 500; }
+.btn:hover { border-color: var(--copper); }
+.btn.primary { background: var(--copper); border-color: var(--copper); color: var(--surface); }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+@media (max-width: 1000px) { .side { position: static; } }
+
+svg#scene { width: 100%; height: auto; display: block; }
+.part { cursor: pointer; }
+.part .hit { fill: transparent; stroke: transparent; stroke-width: 2; stroke-dasharray: 6 4; }
+.part:hover .hit { stroke: var(--muted); }
+.part.sel .hit { stroke: var(--copper); stroke-width: 2.5; }
+.part:focus-visible { outline: none; }
+.part:focus-visible .hit { stroke: var(--copper); }
+.t { font-family: var(--f-body); font-size: 13px; fill: var(--muted); }
+.tv { font-family: var(--f-mono); font-size: 13px; fill: var(--fg); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85rem; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+.parts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.pbtn { border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: .88rem; }
+.pbtn[aria-pressed="true"] { border-color: var(--copper); background: color-mix(in srgb, var(--copper) 14%, var(--surface)); }
+.pbtn:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+.intro { margin: 0 0 10px; }
+.ctrl { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.ctrl:first-child { border-top: 0; }
+.ctrl > label, .ctrl > .lbl { font-weight: 600; }
+.ctrl .num { display: flex; align-items: center; gap: 6px; }
+.ctrl input[type=number] { width: 82px; font-family: var(--f-mono); padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); text-align: right; font-size: .95rem; }
+.ctrl .unit { color: var(--muted); font-size: .85rem; min-width: 38px; }
+.ctrl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--copper); }
+.ctrl select { grid-column: 1 / -1; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.ctrl small { grid-column: 1 / -1; color: var(--muted); font-size: .8rem; }
+.ctrl.tog { grid-template-columns: auto 1fr; }
+.ctrl.tog input { width: 18px; height: 18px; accent-color: var(--copper); margin: 0; }
+.ctrl.tog label { font-weight: 500; }
+.ctrl .btn { grid-column: 1 / -1; justify-self: start; }
+.facts { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 12px; margin: 0; font-size: .92rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+table.recipe { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: 10px; }
+table.recipe th, table.recipe td { padding: 3px 4px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+table.recipe th:first-child, table.recipe td:first-child { text-align: left; }
+table.recipe th { color: var(--muted); font-weight: 600; font-size: .78rem; }
+table.recipe .hl { background: color-mix(in srgb, var(--copper) 14%, transparent); }
+.scroll { overflow-x: auto; min-width: 0; }
+
+.res { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 700px) { .res { grid-template-columns: minmax(0, 1fr); } }
+.big .v { font-family: var(--f-display); font-weight: 600; font-size: 3.2rem; line-height: 1; color: var(--copper); font-variant-numeric: tabular-nums; }
+.big .u { font-size: 1.1rem; color: var(--muted); margin-left: 4px; }
+.mini { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 12px; }
+.mini .val { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+table.loc { width: 100%; border-collapse: collapse; font-size: .92rem; }
+table.loc th { text-align: left; color: var(--muted); font-weight: 600; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; padding: 0 6px 4px 0; }
+table.loc td { padding: 6px 6px 6px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+table.loc td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+table.loc th.n { text-align: right; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip.good { color: var(--good); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
+.diag { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.diag li { padding: 6px 10px; border-radius: 6px; background: var(--bg); border-left: 3px solid var(--warn); font-size: .92rem; }
+.diag li.bad { border-left-color: var(--bad); }
+.diag li.good { border-left-color: var(--good); }
+.diag li b { font-weight: 600; }
+.formula { font-family: var(--f-mono); font-size: .8rem; color: var(--muted); overflow-x: auto; white-space: nowrap; margin-top: 12px; padding: 8px 10px; background: var(--bg); border-radius: 6px; border: 1px solid var(--line); }
+.tip { margin: 0 0 10px; padding: 8px 12px; border-radius: 6px; background: color-mix(in srgb, var(--warn) 12%, var(--surface)); border-left: 3px solid var(--warn); font-size: .92rem; }
+.tip.ok { background: color-mix(in srgb, var(--good) 10%, var(--surface)); border-left-color: var(--good); }
+details.assume { font-size: .9rem; color: var(--muted); }
+details.assume summary { cursor: pointer; font-weight: 600; color: var(--fg); }
+details.assume ul { margin: 8px 0 0; padding-left: 18px; }
+details.assume li { margin-bottom: 4px; max-width: 90ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Galvanik-<span>Simulator</span></h1>
+      <p class="sub">Dein Aufbau zum Anklicken: Teil wählen, Werte ändern, Ergebnis sofort sehen. Saures Kupferbad, vereinfachtes Modell, Version 3.</p>
+    </div>
+    <div class="presets" role="group" aria-label="Voreinstellungen">
+      <button class="btn" id="pIst" type="button">Mein Aufbau heute</button>
+      <button class="btn primary" id="pVor" type="button">Vorschlag aus den Etappen</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel" aria-label="Interaktives Bild des Aufbaus">
+        <svg id="scene" viewBox="0 0 760 550" role="img" aria-label="Querschnitt durch den Behälter mit Netzgerät, Anode, Werkstück, Draht und Heizstab">
+          <defs>
+            <linearGradient id="gBath" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="var(--bath)"/><stop offset="1" stop-color="var(--bath-deep)"/>
+            </linearGradient>
+          </defs>
+          <g class="part" data-part="bad" tabindex="0" role="button" aria-label="Behälter und Elektrolyt">
+            <rect class="hit" x="194" y="146" width="432" height="370"/>
+            <rect id="liquid" x="203" y="200" width="414" height="307" fill="url(#gBath)"/>
+            <path id="surface" d="" fill="none" stroke="var(--bath-deep)" stroke-width="1.5"/>
+            <g id="sludge"></g>
+            <g id="crystals"></g>
+            <path d="M200 150 V510 H620 V150" fill="none" stroke="var(--tank)" stroke-width="5" stroke-linejoin="round"/>
+            <text class="t" x="410" y="534" text-anchor="middle">Behälter 24 × 14 × 12 cm (Querschnitt quer, 14 cm breit)</text>
+            <text class="t" id="volLbl" x="212" y="226"></text>
+          </g>
+
+          <g class="part" data-part="heiz" tabindex="0" role="button" aria-label="Heizstab">
+            <rect class="hit" id="heatHit" x="538" y="150" width="34" height="320"/>
+            <rect id="heatCap" x="544" y="150" width="22" height="22" rx="4" fill="var(--minus)"/>
+            <rect id="heatGlass" x="547" y="170" width="16" height="280" rx="8" fill="var(--minus)" fill-opacity=".75" stroke="var(--tank)"/>
+            <rect id="heatCoil" x="551" y="260" width="8" height="180" rx="4"/>
+            <text class="t" id="heatLbl" x="555" y="142" text-anchor="middle"></text>
+          </g>
+
+          <defs><marker id="arrowHead" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--plus)"/></marker></defs>
+          <g id="arrows" pointer-events="none" opacity=".45"></g>
+          <g id="ions" pointer-events="none"></g>
+
+          <g class="part" data-part="anode" tabindex="0" role="button" aria-label="Anode">
+            <g id="anodes"></g>
+          </g>
+
+          <g class="part" data-part="abstand" tabindex="0" role="button" aria-label="Abstand Anode zum Werkstück">
+            <rect class="hit" id="dimHit"/>
+            <path id="dimLine" fill="none" stroke="var(--fg)" stroke-width="1.3"/>
+            <text class="tv" id="dimTxt" text-anchor="middle"></text>
+          </g>
+
+          <g class="part" data-part="netz" tabindex="0" role="button" aria-label="Netzgerät">
+            <rect class="hit" x="10" y="10" width="192" height="116" rx="10"/>
+            <rect x="16" y="16" width="180" height="104" rx="8" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.5"/>
+            <rect x="26" y="26" width="160" height="40" rx="4" fill="var(--lcd)"/>
+            <text id="lcdA" x="100" y="52" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="17" fill="var(--lcd-fg)"></text>
+            <text id="lcdV" x="178" y="52" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="17" fill="var(--lcd-fg)"></text>
+            <text class="t" x="26" y="84" style="font-size:11px">SPS-W3010 · 30 V / 10 A</text>
+            <text class="t" id="timerTxt" x="26" y="104" style="font-size:11px"></text>
+            <circle cx="150" cy="104" r="6" fill="var(--plus)"/>
+            <circle cx="178" cy="104" r="6" fill="var(--minus)"/>
+            <text x="150" y="88" text-anchor="middle" font-size="13" font-weight="700" fill="var(--plus)">+</text>
+            <text x="178" y="88" text-anchor="middle" font-size="13" font-weight="700" fill="var(--minus)">−</text>
+          </g>
+
+          <path id="wirePlus" fill="none" stroke="var(--plus)" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M178 110 V118 H410 V126" fill="none" stroke="var(--minus)" stroke-width="2.2"/>
+          <path d="M386 118 V126 M434 118 V126" fill="none" stroke="var(--minus)" stroke-width="2.2"/>
+          <line x1="200" y1="147" x2="620" y2="147" stroke="var(--tank)" stroke-width="2" stroke-dasharray="2 6" opacity=".6"/>
+          <circle cx="386" cy="132" r="6" fill="var(--copper)"/><circle cx="410" cy="132" r="6" fill="var(--copper)"/><circle cx="434" cy="132" r="6" fill="var(--copper)"/><circle id="rodX" cx="410" cy="132" r="6" fill="var(--copper)"/>
+          <text class="t" x="448" y="128">Kathodenstäbe (laufen der Länge nach)</text>
+
+          <g class="part" data-part="draht" tabindex="0" role="button" aria-label="Aufhängedraht">
+            <rect class="hit" id="wireHit"/>
+            <path id="wireLine" fill="none" stroke="var(--copper)"/>
+            <path id="wireIso" fill="none" stroke="var(--iso)" stroke-linecap="round"/>
+          </g>
+
+          <g class="part" data-part="stueck" tabindex="0" role="button" aria-label="Werkstück">
+            <rect class="hit" id="pieceHit"/>
+            <g id="layerG"></g>
+            <polygon id="core" fill="var(--core)"/>
+            <text class="t" id="pieceLbl"></text>
+          </g>
+        </svg>
+        <div class="legend">
+          <span><i style="background:var(--shiny)"></i>glänzend</span>
+          <span><i style="background:var(--matte)"></i>matt rosa</span>
+          <span><i style="background:var(--burnt)"></i>verbrannt</span>
+          <span>Jedes Teil im Bild lässt sich anklicken. Die Schicht ist stark vergrößert gezeichnet.</span>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Ergebnis">
+        <div class="res">
+          <div>
+            <div class="label">Schichtdicke auf der Fläche</div>
+            <div class="big"><span class="v" id="dMain">–</span><span class="u">µm</span></div>
+            <div class="mono" id="dMm" style="color:var(--muted)"></div>
+            <div class="mini">
+              <div><div class="label">Stromdichte</div><div class="val" id="mJ"></div></div>
+              <div><div class="label">Spannung ca.</div><div class="val" id="mU"></div></div>
+              <div><div class="label">Kupfer gesamt</div><div class="val" id="mM"></div></div>
+              <div><div class="label">Kupfer je Stück</div><div class="val" id="mP"></div></div>
+              <div><div class="label">Ziel</div><div class="val" id="mT"></div></div>
+              <div><div class="label">Zeit bis Ziel</div><div class="val" id="mTT"></div></div>
+            </div>
+          </div>
+          <div class="scroll">
+            <table class="loc" id="locTbl"></table>
+            <ul class="diag" id="diag"></ul>
+          </div>
+        </div>
+        <div class="formula" id="formula"></div>
+      </section>
+
+      <section class="panel">
+        <details class="assume">
+          <summary>Annahmen und Grundlagen des Modells</summary>
+          <ul>
+            <li>„Mein Aufbau heute“ stammt aus dem Briefing und den Fotos vom 29.10.2026: 3,5 L, pro Liter 200 g Kupfersulfat, 180 ml Schwefelsäure 15 % (≈ 30 g/L), kein Chlorid, 4 ml Tifoo-Glanzzusatz, 25 °C. Zwei Anoden an beiden langen Wänden, links 14 × 6 cm, rechts 20 × 8 cm, je 0,5 cm dick, in durchlöcherten Plastikboxen. Kathodenstäbe der Länge nach in der Mitte. Blatt 4 × 5 cm beidseitig, 0,8 A fest, 24 h.</li>
+            <li>Geschätzt: Abstand 6 cm von jeder Anode zur Mitte. Aus dem Foto waren es 5–8 cm, im 14 cm breiten Behälter passen aber höchstens ca. 6,5 cm. Die Breite der Anoden ist im Bild als Höhe gezeichnet. Verdunstung 20 %, weil nie nachgefüllt wurde und sich Kristalle bilden.</li>
+            <li>„Vorschlag“ aus Etappe 1, 2 und 7: gleicher Aufbau, dazu PP-Beutel in den Boxen, Wasser auffüllen, Badbewegung (Luftsprudler), 0,1 g Kochsalz pro Liter, Strom = Fläche × 0,015, langsam hochfahren, Draht isoliert. Säure bleibt bei 180 ml/L, 330 ml/L ist ein Test für den nächsten Neuansatz.</li>
+            <li>Stromanteil der zwei Anoden grob nach Fläche hoch 0,3 geschätzt: Bei gleichem Abstand bestimmt vor allem der Weg durch das Bad den Strom, die Größe der Anode nur wenig.</li>
+            <li>Faraday: Kupfer aus Cu²⁺, 1,186 g pro Amperestunde, Dichte 8,96 g/cm³. Stromausbeute 98 %, sinkt nahe der Grenzstromdichte.</li>
+            <li>Grenzstromdichte (ab hier verbrennt es): ca. 3 A/dm² bei 22 °C, +2,5 % pro °C. Ohne Chlorid 20 % weniger, mit Badbewegung 60 % mehr. Glanz braucht mindestens ca. 1 A/dm². Ohne Chlorid wirkt der Glanzzusatz an Stellen mit wenig Strom kaum, angenommen sind dann 2 A/dm².</li>
+            <li>Leitende Fläche: beide Seiten bei beidseitigem Leitlack, dazu der Draht unter Wasser, wenn er nicht isoliert ist.</li>
+            <li>Stromverteilung grob geschätzt: Kanten bekommen mehr, Vertiefungen weniger. Der Unterschied wächst mit 1/√Abstand (bezogen auf 5 cm), mit weniger Säure, bei liegender Anode und ohne Badbewegung. Mit einer Anode an der Wand bekommt die Rückseite weniger.</li>
+            <li>Anode: wirksam ist die Seite zum Werkstück. Sie sollte doppelt so groß sein wie das Werkstück, Anodenstromdichte höchstens ca. 2 A/dm².</li>
+            <li>Leitfähigkeit grob 0,05 + 0,004 × Säure (g/L) S/cm, +1,5 % pro °C. Spannung = 0,4 V + Stromdichte × Abstand ÷ Leitfähigkeit. Das Netzgerät zeigt den echten Wert.</li>
+            <li>Rezept pro Liter, hochgerechnet auf das eingestellte Volumen. Säure 96 % zum Vergleich mit Dichte 1,84 g/ml.</li>
+          </ul>
+        </details>
+      </section>
+    </div>
+
+    <div class="col side">
+      <section class="panel" aria-label="Teil bearbeiten">
+        <div class="parts" id="parts" role="group" aria-label="Teile des Aufbaus"></div>
+        <h2 id="edTitle"></h2>
+        <p class="intro" id="edIntro"></p>
+        <div id="edCtrls"></div>
+        <div class="facts" id="edFacts"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const M = 63.546, Z = 2, F = 96485, RHO = 8.96;
+  const P = 30, X0 = 200, YB = 510, CX = 410, ROD = 132, IN = 3;
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const nf = (v, d = 0) => (isFinite(v) ? v : 0).toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtH = h => { if (!isFinite(h)) return "–"; const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return mm === 60 ? `${hh + 1} h` : ((hh ? `${hh} h` : "") + (mm ? ` ${mm} min` : (hh ? "" : "0 min"))).trim(); };
+
+  const PIECES = {
+    ohrring: { n: "Ohrring-Blatt 3 × 2,5 cm", a: 5, h: 3, solid: false },
+    blatt45: { n: "Blatt 4 × 5 cm", a: 14, h: 5, solid: false },
+    ring:    { n: "Ring (Blatt + Schiene)", a: 8, h: 2.5, solid: true },
+    zapfen:  { n: "Zapfen 5 cm", a: 35, h: 5, solid: true },
+    rose:    { n: "Rose", a: 60, h: 6, solid: true },
+    eigen:   { n: "Eigenes Stück", a: 20, h: 4, solid: false }
+  };
+  const JEWELS = {
+    auto: ["Automatisch aus der Größe", 0, 0],
+    ohrring: ["Ohrringe", 150, 300], ring: ["Ringe", 300, 500], anhaenger: ["Anhänger, Broschen", 300, 500],
+    armband: ["Armbänder, Armreifen", 500, 700], christbaum: ["Christbaumschmuck", 150, 300], deko: ["Wanddeko, Rose, große Stücke", 500, 700]
+  };
+  const MODES = { zwei: "Zwei Anoden an beiden Wänden (heute)", wand: "Nur eine Anode an der Wand", liegend: "Eine Anode liegend am Boden" };
+  const GUARDS = { none: "kein Schutz", box: "durchlöcherte Plastikbox (heute)", bag: "Anodenbeutel aus Polypropylen" };
+
+  const IST = { I: 0.8, t: 24, ramp: false, V: 3.5, cuso4: 200, acid15: 180, nacl: 0, bright: 4, agit: false, T: 25,
+    mode: "zwei", anL: 14, anB: 6, anL2: 20, anB2: 8, guard: "box", D: 6, evap: 20, wireD: 0.8, wireLen: 3, wireIso: false,
+    piece: "blatt45", area: 14, sides: 2, n: 1, jewel: "auto" };
+  const VOR = { guard: "bag", evap: 0, nacl: 0.1, ramp: true, wireIso: true, agit: true };
+  const S = { ...IST };
+  let sel = "netz";
+
+  function autoJewel(Apc) {
+    if (S.piece === "ring") return "ring";
+    if (S.piece === "rose") return "deko";
+    return Apc <= 10 ? "ohrring" : Apc <= 40 ? "anhaenger" : "deko";
+  }
+
+  function model() {
+    const pc = PIECES[S.piece], solid = pc.solid, sides = solid ? 1 : S.sides;
+    const hL = Math.min(11.8, S.V * 1000 / 336);
+    const h = S.piece === "eigen" ? clamp(Math.sqrt(S.area) * 1.1, 2, 7) : pc.h;
+    const Dmax = S.mode === "zwei" ? 6.5 : S.mode === "wand" ? 12 : Math.max(0.5, Math.floor((hL - 1 - h - 0.4) * 2) / 2);
+    const D = Math.min(S.D, Dmax);
+    const Aw = S.wireIso ? 0 : Math.PI * (S.wireD / 10) * S.wireLen;
+    const Apc = S.area * sides;
+    const A = S.n * Apc + Aw;
+    const j = S.I / (A / 100);
+    const acidG = S.acid15 * 1.102 * 0.15, acid96 = acidG / (1.84 * 0.96);
+    const conc = 1 / (1 - S.evap / 100), cuEff = S.cuso4 * conc, acidEff = acidG * conc, cl = S.nacl * 606.6 * conc;
+    const crys = S.T < 18 || cuEff > 240 || acidEff > 90;
+    const kappa = (0.05 + 0.004 * acidEff) * (1 + 0.015 * (S.T - 22));
+    const jMax = Math.max(1, 3 * (1 + 0.025 * (S.T - 22)) * (S.agit ? 1.6 : 1) * (cl < 20 ? 0.8 : 1));
+    const glossMin = S.bright <= 0 ? Infinity : (cl < 20 ? 2.0 : 1.0);
+    const r = j / jMax;
+    const eta = r <= 0.8 ? 0.98 : Math.max(0.6, 0.98 - 0.35 * (r - 0.8));
+    const Q = S.I * S.t * 3600, mAn = Q * M / (Z * F), m = mAn * eta;
+    const d = m / (RHO * A) * 1e4;
+    const rc = Math.min(r, 1.5);
+    const kd = Math.sqrt(5 / D), ka = clamp(Math.sqrt(0.27 / kappa), 0.7, 1.6);
+    const kg = { liegend: 1.35, wand: 1, zwei: 0.9 }[S.mode], km = S.agit ? 0.9 : 1;
+    const k = Math.pow(kd * ka * kg * km, 0.7);
+    const edge = Math.min(3.5, 1 + (0.25 + 0.25 * rc) * k);
+    const rec = Math.max(0.15, 1 - (0.2 + 0.15 * rc) * k);
+    let front = 1, back = 1;
+    const A1 = S.anL * S.anB, A2 = S.anL2 * S.anB2, share2 = A2 ** 0.3 / (A1 ** 0.3 + A2 ** 0.3);
+    if (sides === 2 && S.mode === "wand") { back = clamp(0.65 * Math.sqrt(D / 5), 0.25, 0.95); front = 2 - back; }
+    if (sides === 2 && S.mode === "zwei") { const w1 = A1 ** 0.3, w2 = A2 ** 0.3; front = 2 * w1 / (w1 + w2); back = 2 - front; }
+    const edgeBot = S.mode === "liegend" ? 1 + (edge - 1) * 1.6 : edge;
+    const edgeTop = S.mode === "liegend" ? 1 + (edge - 1) * 0.5 : edge;
+    const Aeff = S.mode === "zwei" ? A1 + A2 : A1;
+    const jA = S.I / (Aeff / 100);
+    const U = 0.4 + (j / 100) * D / kappa * (S.mode === "liegend" ? 1.2 : 1);
+    const rate = d / S.t;
+    const jewel = S.jewel === "auto" ? autoJewel(Apc) : S.jewel;
+    const [jn, tLo, tHi] = JEWELS[jewel];
+    const tgt = (tLo + tHi) / 2;
+    const st = jl => jl > jMax ? ["bad", "verbrannt"] : !isFinite(glossMin) ? ["warn", "matt"] : jl < glossMin ? ["warn", "matt rosa"] : ["good", "glänzend"];
+    const locs = [];
+    const add = (n, f) => locs.push({ n, f, dd: d * f, jl: j * f, s: st(j * f) });
+    add(S.mode === "liegend" ? "Unterkante (zur Anode)" : "Kante", Math.max(edgeBot, edgeTop) * front);
+    if (sides === 2 && S.mode === "wand") { add("Fläche vorne (zur Anode)", front); add("Fläche hinten", back); }
+    else if (sides === 2 && S.mode === "zwei") { add("Fläche links (Anode 1)", front); add("Fläche rechts (Anode 2)", back); }
+    else add("Fläche", 1);
+    add("Vertiefung", rec * Math.min(front, back));
+    return { pc, sides, hL, h, Dmax, D, Aw, Apc, A, j, acidG, acid96, cl, kappa, jMax, glossMin, r, eta, mAn, m, d,
+      edge, rec, front, back, edgeBot, edgeTop, Aeff, A1, A2, share2, conc, cuEff, acidEff, crys, jA, U, rate, jn, tLo, tHi, tgt, tTgt: tgt / rate,
+      mPiece: m * Apc / A, locs, st, iRec: A * 0.015 };
+  }
+
+  /* ---------- Bild ---------- */
+  const NS = "http://www.w3.org/2000/svg";
+  let G = null;
+  function geometry(o) {
+    const yl = YB - o.hL * P, h = o.h * P;
+    let an, cx = CX, leafTop, leafBot, dim;
+    if (S.mode === "liegend") {
+      const w = S.anB * P;
+      an = [{ x: CX - w / 2, y: YB - IN - P, w, h: P, n: "Anode" }];
+      leafBot = YB - IN - P - o.D * P; leafTop = leafBot - h;
+      dim = { x1: CX + 34, y1: YB - IN - P, x2: CX + 34, y2: leafBot, tx: CX + 44, ty: (YB - IN - P + leafBot) / 2 + 4, anchor: "start" };
+    } else {
+      const ha = S.anB * P, anBot = YB - IN - 0.4 * P, anTop = anBot - ha, T = 0.5 * P;
+      if (S.mode === "zwei") an = [{ x: CX - o.D * P - T, y: anTop, w: T, h: ha, n: "Anode 1" }, { x: CX + o.D * P, y: anBot - S.anB2 * P, w: T, h: S.anB2 * P, n: "Anode 2" }];
+      else { an = [{ x: X0 + IN + 4, y: anTop, w: T, h: ha, n: "Anode" }]; cx = X0 + IN + 4 + T + o.D * P; }
+      const mid = (Math.min(...an.map(a => a.y)) + anBot) / 2;
+      leafTop = Math.max(yl + 0.4 * P, mid - h / 2); leafBot = Math.min(YB - 0.4 * P, leafTop + h);
+      const face = S.mode === "zwei" ? CX - o.D * P : X0 + IN + 4 + T;
+      dim = { x1: face, y1: leafBot + 18, x2: cx, y2: leafBot + 18, tx: (face + cx) / 2, ty: leafBot + 12, anchor: "middle" };
+    }
+    return { yl, an, cx, leafTop, leafBot, dim };
+  }
+
+  function sideFactor(o, s, side) {
+    let f = side === "L" ? o.front : o.back;
+    for (const sk of [0.36, 0.66]) { const g = Math.exp(-(((s - sk) / 0.07) ** 2)); f *= 1 - (1 - o.rec) * g; }
+    const eT = Math.exp(-((s / 0.06) ** 2)), eB = Math.exp(-(((1 - s) / 0.06) ** 2));
+    return f * (1 + (o.edgeTop - 1) * eT + (o.edgeBot - 1) * eB);
+  }
+  const colorOf = s => s[0] === "bad" ? "var(--burnt)" : s[0] === "warn" ? "var(--matte)" : "var(--shiny)";
+  const attr = (id, o) => { const el = $(id); for (const k in o) el.setAttribute(k, o[k]); };
+
+  function drawScene(o) {
+    const g = geometry(o); G = g; g.share2 = o.share2;
+    attr("rodX", { cx: g.cx, opacity: [386, 410, 434].includes(g.cx) ? 0 : 1 });
+    $("arrows").innerHTML = g.an.map((a, i) => {
+      const w = 3 + 4 * (g.an.length > 1 ? (i ? o.share2 : 1 - o.share2) * 2 : 1) * Math.min(1.5, Math.sqrt(S.I));
+      if (S.mode === "liegend") return `<path d="M${g.cx - 40} ${a.y - 6} L${g.cx - 12} ${g.leafBot + 10}" stroke="var(--plus)" stroke-width="${w.toFixed(1)}" marker-end="url(#arrowHead)" fill="none"/>`;
+      const left = a.x < g.cx, x1 = left ? a.x + a.w + 16 : a.x - 16, x2 = left ? g.cx - 20 : g.cx + 20, y = (g.leafTop + g.leafBot) / 2 + (left ? -18 : 18);
+      return `<path d="M${x1} ${y} H${x2}" stroke="var(--plus)" stroke-width="${w.toFixed(1)}" marker-end="url(#arrowHead)" fill="none"/>`;
+    }).join("");
+    attr("liquid", { y: g.yl, height: YB - 3 - g.yl, "fill-opacity": clamp(0.55 + (S.cuso4 - 150) / 250, 0.5, 1) });
+    let sp = `M203 ${g.yl}`; for (let x = 203; x < 600; x += 46) sp += " q 11.5 -3 23 0 t 23 0";
+    $("surface").setAttribute("d", sp);
+    attr("volLbl", { y: g.yl - 8 }); $("volLbl").textContent = `Elektrolyt ${nf(S.V, 1)} L · ${nf(o.hL, 1)} cm hoch`;
+    let sl = "";
+    const nSl = { none: 60, box: 26, bag: 0 }[S.guard];
+    for (let i = 0; i < nSl; i++) { const x = 208 + ((i * 97) % 404), y = YB - 5 - ((i * 37) % 9); sl += `<circle cx="${x}" cy="${y}" r="${1.4 + (i % 3) * 0.5}" fill="var(--core)" opacity=".7"/>`; }
+    if (S.guard === "none") for (let i = 0; i < 30; i++) { const x = 210 + ((i * 89) % 400), y = g.yl + 12 + ((i * 53) % Math.max(20, YB - g.yl - 24)); sl += `<circle cx="${x}" cy="${y}" r="1.3" fill="var(--tank)" opacity=".55"/>`; }
+    $("sludge").innerHTML = sl;
+    let cr = "";
+    if (o.crys) for (const [wx, dir] of [[203, 1], [617, -1]]) for (let i = 0; i < 5; i++) { const y = g.yl - 26 + i * 9; cr += `<polygon points="${wx},${y} ${wx + dir * (7 + (i % 2) * 4)},${y + 3} ${wx},${y + 7}" fill="var(--cold)"/>`; }
+    if (o.crys) for (let i = 0; i < 14; i++) { const x = 212 + i * 29, y = YB - 3; cr += `<polygon points="${x},${y} ${x + 5},${y - 9 - (i % 3) * 3} ${x + 10},${y}" fill="var(--cold)"/>`; }
+    $("crystals").innerHTML = cr;
+    // Heizstab
+    attr("heatCap", { y: g.yl - 36 });
+    attr("heatGlass", { y: g.yl - 16, height: YB - 40 - (g.yl - 16) });
+    attr("heatCoil", { y: g.yl + 30, height: Math.max(20, YB - 52 - (g.yl + 30)), fill: `color-mix(in srgb, var(--hot) ${(clamp((S.T - 16) / 19, 0, 1) * 100).toFixed(0)}%, var(--cold))` });
+    attr("heatLbl", { y: g.yl - 44 }); $("heatLbl").textContent = `Heizstab ${nf(S.T)} °C`;
+    attr("heatHit", { y: g.yl - 60, height: YB - 30 - (g.yl - 60) });
+    // Anoden
+    $("anodes").innerHTML = g.an.map(a => {
+      const vert = a.h > a.w, lx = a.x + a.w / 2, ly = a.y + a.h / 2;
+      let bag = "";
+      if (S.guard === "bag") bag = `<rect x="${a.x - 5}" y="${a.y - 5}" width="${a.w + 10}" height="${a.h + 10}" rx="6" fill="none" stroke="var(--fg)" stroke-dasharray="3 3"/>`;
+      if (S.guard === "box") { bag = `<rect x="${a.x - 7}" y="${a.y - 7}" width="${a.w + 14}" height="${a.h + 10}" rx="2" fill="none" stroke="var(--fg)" stroke-width="1.5"/>`;
+        for (let yy = a.y; yy < a.y + a.h; yy += 12) bag += `<circle cx="${a.x - 7}" cy="${yy}" r="1.6" fill="var(--bath)"/><circle cx="${a.x + a.w + 7}" cy="${yy}" r="1.6" fill="var(--bath)"/>`; }
+      return `<rect class="hit" x="${a.x - 8}" y="${a.y - 8}" width="${a.w + 16}" height="${a.h + 16}"/>${bag}
+        <rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}" rx="2" fill="var(--copper)"/>
+        <text class="t" x="${lx}" y="${vert ? a.y - 14 : ly}" text-anchor="middle" style="fill:${vert ? "var(--fg)" : "var(--surface)"}">${a.n}</text>`;
+    }).join("");
+    const a0 = g.an[0];
+    let wp;
+    if (S.mode === "liegend") wp = `M150 110 V142 H${X0 + 14} V${a0.y + a0.h / 2} H${a0.x}`;
+    else { wp = `M150 110 V142 H${a0.x + a0.w / 2} V${a0.y}`; if (g.an[1]) { const a1 = g.an[1]; wp += ` M${a0.x + a0.w / 2} 142 H${a1.x + a1.w / 2} V${a1.y}`; } }
+    $("wirePlus").setAttribute("d", wp);
+    // Abstand
+    const dm = g.dim, vert = dm.x1 === dm.x2;
+    $("dimLine").setAttribute("d", vert
+      ? `M${dm.x1} ${dm.y1} V${dm.y2} M${dm.x1 - 5} ${dm.y1} H${dm.x1 + 5} M${dm.x1 - 5} ${dm.y2} H${dm.x1 + 5}`
+      : `M${dm.x1} ${dm.y1} H${dm.x2} M${dm.x1} ${dm.y1 - 5} V${dm.y1 + 5} M${dm.x2} ${dm.y1 - 5} V${dm.y1 + 5}`);
+    attr("dimTxt", { x: dm.tx, y: dm.ty, "text-anchor": dm.anchor }); $("dimTxt").textContent = nf(o.D, o.D % 1 ? 1 : 0) + " cm";
+    if (vert) attr("dimHit", { x: dm.x1 - 10, y: Math.min(dm.y1, dm.y2), width: 70, height: Math.max(10, Math.abs(dm.y1 - dm.y2)) });
+    else attr("dimHit", { x: Math.min(dm.x1, dm.x2), y: dm.y1 - 10, width: Math.max(10, Math.abs(dm.x2 - dm.x1)), height: 32 });
+    // Draht
+    const ww = clamp(S.wireD * 2, 1, 5);
+    attr("wireLine", { d: `M${g.cx} ${ROD} V${g.leafTop}`, "stroke-width": ww });
+    const wTop = Math.max(g.yl, g.leafTop - S.wireLen * P);
+    attr("wireIso", { d: S.wireIso && g.leafTop - wTop > 3 ? `M${g.cx} ${wTop} V${g.leafTop - 2}` : "", "stroke-width": ww + 4 });
+    attr("wireHit", { x: g.cx - 10, y: ROD + 4, width: 20, height: Math.max(4, g.leafTop - ROD - 6) });
+    // Werkstück
+    const N = 70, px = Math.min(7, o.d / 700 * 7) + 0.5, core = 1.8;
+    const gapL = S.mode === "liegend" ? 60 : g.cx - (g.an[0].x + g.an[0].w) - 6;
+    const gapR = S.mode === "zwei" ? g.an[1].x - g.cx - 6 : 60;
+    const pts = [];
+    for (let i = 0; i <= N; i++) {
+      const s = i / N, y = g.leafTop + s * (g.leafBot - g.leafTop);
+      let x = g.cx; for (const [sk, a] of [[0.36, 7], [0.66, -6]]) x += a * Math.exp(-(((s - sk) / 0.08) ** 2));
+      const fL = sideFactor(o, s, "L"), fR = sideFactor(o, s, "R");
+      pts.push({ y, x, fL, fR, wL: Math.min(core + px * fL, gapL, 24), wR: Math.min(core + px * fR, gapR, 24) });
+    }
+    const f1 = v => v.toFixed(1);
+    let lay = "";
+    for (let i = 0; i < N; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const cL = colorOf(o.st(o.j * (a.fL + b.fL) / 2)), cR = colorOf(o.st(o.j * (a.fR + b.fR) / 2));
+      lay += `<polygon points="${f1(a.x - a.wL)},${f1(a.y)} ${f1(b.x - b.wL)},${f1(b.y)} ${f1(b.x)},${f1(b.y)} ${f1(a.x)},${f1(a.y)}" fill="${cL}" stroke="${cL}" stroke-width=".6"/>`;
+      lay += `<polygon points="${f1(a.x)},${f1(a.y)} ${f1(b.x)},${f1(b.y)} ${f1(b.x + b.wR)},${f1(b.y)} ${f1(a.x + a.wR)},${f1(a.y)}" fill="${cR}" stroke="${cR}" stroke-width=".6"/>`;
+    }
+    const tE = pts[0], bE = pts[N];
+    lay += `<circle cx="${f1(tE.x)}" cy="${f1(tE.y)}" r="${f1(Math.min(12, core + px * o.edgeTop * 0.6))}" fill="${colorOf(o.st(o.j * o.edgeTop * o.front))}"/>`;
+    lay += `<circle cx="${f1(bE.x)}" cy="${f1(bE.y)}" r="${f1(Math.min(12, core + px * o.edgeBot * 0.6))}" fill="${colorOf(o.st(o.j * o.edgeBot * o.front))}"/>`;
+    $("layerG").innerHTML = lay;
+    $("core").setAttribute("points", pts.map(p => `${f1(p.x - core)},${f1(p.y)}`).concat(pts.slice().reverse().map(p => `${f1(p.x + core)},${f1(p.y)}`)).join(" "));
+    attr("pieceHit", { x: g.cx - 28, y: g.leafTop - 8, width: 56, height: g.leafBot - g.leafTop + 16 });
+    const right = g.cx + 200 < 540 || S.mode === "zwei" ? false : g.cx < 380;
+    attr("pieceLbl", { x: right ? g.cx + 26 : g.cx - 26, "text-anchor": right ? "start" : "end", y: g.leafTop + 4 });
+    $("pieceLbl").textContent = (S.n > 1 ? S.n + " × " : "") + o.pc.n;
+    $("lcdA").textContent = nf(S.I, 2) + " A";
+    $("lcdV").textContent = nf(o.U, 1) + " V";
+    $("timerTxt").textContent = `Timer ${fmtH(S.t)}${S.ramp ? " · Rampe" : ""}`;
+    respawnAll();
+  }
+
+  /* ---------- Ionen ---------- */
+  const ions = [], ionG = $("ions");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  for (let i = 0; i < 46; i++) {
+    const cu = i < 34, el = document.createElementNS(NS, "circle");
+    el.setAttribute("r", cu ? 3.8 : 2.8); el.setAttribute("fill", cu ? "var(--copper)" : "var(--so4)");
+    if (cu) { el.setAttribute("stroke", "var(--surface)"); el.setAttribute("stroke-width", "1"); }
+    ionG.appendChild(el); ions.push({ el, cu, p: 0, a: null, b: null, len: 10 });
+  }
+  function spawn(q, rand) {
+    const g = G; if (!g) return;
+    const lh = g.leafBot - g.leafTop;
+    let a, b;
+    if (S.mode === "liegend") {
+      const an = g.an[0];
+      a = { x: an.x + Math.random() * an.w, y: an.y - 3 };
+      b = { x: g.cx + (Math.random() - 0.5) * 8, y: g.leafBot - (Math.random() ** 2) * lh * 0.8 };
+    } else {
+      const an = g.an.length > 1 && Math.random() < (G.share2 || 0.5) ? g.an[1] : g.an[0];
+      const left = an.x < g.cx, fx = left ? an.x + an.w : an.x;
+      const y0 = Math.max(an.y, g.leafTop), y1 = Math.min(an.y + an.h, g.leafBot);
+      const y = y0 + Math.random() * Math.max(4, y1 - y0);
+      a = { x: fx + (left ? 4 : -4), y }; b = { x: g.cx + (left ? -6 : 6), y: y + (Math.random() - 0.5) * 14 };
+    }
+    if (!q.cu) [a, b] = [b, a];
+    q.a = a; q.b = b; q.p = rand ? Math.random() : 0;
+    q.len = Math.max(10, Math.hypot(b.x - a.x, b.y - a.y));
+  }
+  function place() { for (const q of ions) if (q.a) { q.el.setAttribute("cx", (q.a.x + (q.b.x - q.a.x) * q.p).toFixed(1)); q.el.setAttribute("cy", (q.a.y + (q.b.y - q.a.y) * q.p).toFixed(1)); } }
+  function respawnAll() { for (const q of ions) spawn(q, true); place(); }
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const v = 14 + 26 * Math.sqrt(S.I);
+    for (const q of ions) { if (!q.a) continue; q.p += (q.cu ? v : v * 0.6) * dt / q.len; if (q.p >= 1) spawn(q, false); }
+    place();
+    if (!reduce) requestAnimationFrame(frame);
+  }
+
+  /* ---------- Editor ---------- */
+  const R = (k, label, min, max, step, unit, hint) => ({ t: "r", k, label, min, max, step, unit, hint });
+  const SEL = (k, label, opts, hint) => ({ t: "s", k, label, opts, hint });
+  const TOG = (k, label, hint) => ({ t: "c", k, label, hint });
+  const BTN = (id, label) => ({ t: "b", id, label });
+  const dl = rows => `<dl class="kv">${rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>`;
+
+  const PARTS = {
+    netz: { n: "Netzgerät", short: "Netzgerät",
+      intro: "Labornetzgerät RUZIZAO SPS-W3010. Du stellst den Strom fest ein, das Gerät regelt die Spannung selbst. Entscheidend ist die Stromdichte, also Strom pro Fläche.",
+      ctrls: () => [R("I", "Stromstärke", 0.02, 3, 0.01, "A"), BTN("autoI", "Strom aus der Fläche berechnen (× 0,015)"),
+        R("t", "Badzeit (Timer)", 1, 48, 0.5, "h", "Eine Zeitschaltuhr vor dem Netzgerät schaltet nach dieser Zeit ab."),
+        TOG("ramp", "Langsam hochfahren: ¼ des Stroms für 30–60 min")],
+      facts: o => dl([["Stromdichte", nf(o.j, 2) + " A/dm²"], ["Passend (1–2 A/dm²)", nf(o.A * 0.01, 2) + "–" + nf(o.A * 0.02, 2) + " A"],
+        ["Empfohlen (1,5 A/dm²)", nf(o.iRec, 2) + " A"], ["Spannung ca.", nf(o.U, 1) + " V"], ["Ladung", nf(S.I * S.t, 1) + " Ah"], ["Kupfer, das wandert", nf(o.mAn, 1) + " g"]]) },
+    bad: { n: "Behälter und Elektrolyt", short: "Bad",
+      intro: "Alle Mengen pro 1 Liter. Die Tabelle rechnet sie auf das Volumen hoch. Dein Behälter: 24 × 14 × 12 cm, gefüllt mit 3,5 L.",
+      ctrls: () => [R("V", "Füllmenge", 1, 4, 0.5, "L"), R("cuso4", "Kupfersulfat", 150, 250, 5, "g/L"),
+        R("acid15", "Schwefelsäure 15 %", 100, 400, 5, "ml/L", "Heute 180 ml/L ≈ 30 g/L. Zum Testen vorgeschlagen: 330 ml/L ≈ 55 g/L."),
+        R("nacl", "Kochsalz jodfrei (Chlorid)", 0, 0.3, 0.01, "g/L", "Vorschlag 0,1 g/L ≈ 60 mg/L Chlorid. Nicht mehr, zu viel lässt sich nur durch Verdünnen senken."),
+        R("bright", "Tifoo-Glanzzusatz", 0, 8, 0.5, "ml/L"),
+        R("evap", "Wasser verdunstet seit dem Ansatz", 0, 35, 1, "%", "Du hast noch nie Wasser nachgefüllt. 20 % sind geschätzt. Mit destilliertem Wasser bis zur Markierung auffüllen setzt den Wert auf 0."),
+        TOG("agit", "Badbewegung (Luftsprudler oder Rühren)")],
+      facts: o => {
+        const vols = [1, 2, 3, 3.5, 4]; const hl = v => v === S.V ? ' class="hl"' : "";
+        const row = (n, f, dd) => `<tr><td>${n}</td>${vols.map(v => `<td${hl(v)}>${nf(f * v, dd)}</td>`).join("")}</tr>`;
+        return dl([["Füllhöhe", nf(o.hL, 1) + " cm"], ["Kupfersulfat jetzt", nf(o.cuEff, 0) + " g/L"], ["Schwefelsäure jetzt", nf(o.acidEff, 0) + " g/L"], ["Chlorid", nf(o.cl, 0) + " mg/L"], ["Kristalle", o.crys ? "ja, wahrscheinlich" : "nein"], ["Leitfähigkeit ca.", nf(o.kappa, 2) + " S/cm"]]) +
+          `<div class="scroll"><table class="recipe"><thead><tr><th>Pro Bad</th>${vols.map(v => `<th${hl(v)}>${nf(v, 1)} L</th>`).join("")}</tr></thead><tbody>` +
+          row("Kupfersulfat g", S.cuso4, 0) + row("Säure 15 % ml", S.acid15, 0) + row("oder Säure 96 % ml", o.acid96, 1) +
+          row("Kochsalz g", S.nacl, 2) + row("Glanzzusatz ml", S.bright, 1) + `</tbody></table></div>`;
+      } },
+    heiz: { n: "Heizstab", short: "Heizstab",
+      intro: "Aquarium-Heizstab aus Glas, einstellbar 20–35 °C, meist auf 25 °C. Im Winter fällt das Bad in der Werkstatt auf ca. 16 °C.",
+      ctrls: () => [R("T", "Badtemperatur", 14, 35, 1, "°C", "Gut: 20–28 °C. Unter 18 °C bilden sich Kristalle, über 30 °C leidet der Glanzzusatz.")],
+      facts: o => dl([["Grenzstromdichte", nf(o.jMax, 1) + " A/dm²"], ["Leitfähigkeit ca.", nf(o.kappa, 2) + " S/cm"], ["Heizleistung (1–3 W/L)", nf(S.V, 0) + "–" + nf(S.V * 3, 0) + " W"]]) },
+    anode: { n: "Anode", short: "Anode",
+      intro: "Heute zwei Kupfer-Reststücke, je ca. 0,5 cm dick: links 14 × 6 cm, rechts 20 × 8 cm, jeweils in einer durchlöcherten Plastikbox an der Wand. Wirksam ist die Seite, die zur Mitte zeigt. Die größere Anode schickt etwas mehr Strom.",
+      ctrls: () => [SEL("mode", "Lage", Object.entries(MODES)),
+        R("anL", S.mode === "zwei" ? "Anode 1 (links): Länge" : "Länge", 4, 22, 1, "cm"), R("anB", S.mode === "zwei" ? "Anode 1: Breite" : "Breite", 2, 10, 0.5, "cm"),
+        ...(S.mode === "zwei" ? [R("anL2", "Anode 2 (rechts): Länge", 4, 22, 1, "cm"), R("anB2", "Anode 2: Breite", 2, 10, 0.5, "cm")] : []),
+        SEL("guard", "Schutz um die Anode", Object.entries(GUARDS), "Die Lochbox hält groben Schlamm zurück, feine Partikel kommen trotzdem durch. Ein PP-Beutel hält mehr zurück.")],
+      facts: o => dl([...(S.mode === "zwei" ? [["Anode 1 (zur Mitte)", nf(o.A1, 0) + " cm²"], ["Anode 2 (zur Mitte)", nf(o.A2, 0) + " cm²"]] : []), ["Wirksame Fläche", nf(o.Aeff, 0) + " cm²"], ["Werkstück höchstens", nf(o.Aeff / 2, 0) + " cm²"], ["Strom höchstens", nf(o.Aeff / 100 * 2, 1) + " A"], ["Anodenstromdichte", nf(o.jA, 2) + " A/dm²"]]) },
+    abstand: { n: "Abstand Anode zum Werkstück", short: "Abstand",
+      intro: "Der Abstand ändert die Durchschnittsdicke nicht, weil das Netzgerät den Strom vorgibt. Er ändert die Verteilung: Je näher, desto mehr bekommen Kanten und desto weniger Vertiefungen. Empfohlen sind 5–6 cm.",
+      ctrls: o => [R("D", "Abstand", 1, o.Dmax, 0.5, "cm", S.mode === "zwei" ? "Mit zwei Anoden an den Wänden passen im 14 cm breiten Behälter höchstens 6 cm." : S.mode === "liegend" ? "Bei liegender Anode begrenzt die Füllhöhe den Abstand." : "")],
+      facts: o => dl([["Abstand wirksam", nf(o.D, 1) + " cm"], ["Kante ×", nf(o.edge, 2)], ["Vertiefung ×", nf(o.rec, 2)], ["Spannung ca.", nf(o.U, 1) + " V"]]) },
+    draht: { n: "Aufhängedraht", short: "Draht",
+      intro: "Der Draht unter Wasser wird mitverkupfert und nimmt Strom weg. Elektrisch spielt die Dicke kaum eine Rolle, 0,8–1 mm hält das Stück ruhig.",
+      ctrls: () => [R("wireD", "Drahtdicke", 0.3, 2.5, 0.1, "mm"), R("wireLen", "Länge unter Wasser", 0, 8, 0.5, "cm"), TOG("wireIso", "Draht unter Wasser isoliert (Nagellack, Schrumpfschlauch)")],
+      facts: o => dl([["Drahtfläche", nf(o.Aw, 2) + " cm²"], ["Anteil am Strom", nf(o.Aw / o.A * 100, 1) + " %"], ["Kupfer am Draht", nf(o.m * o.Aw / o.A, 2) + " g"]]) },
+    stueck: { n: "Werkstück", short: "Werkstück",
+      intro: "Gezählt wird alles, was Leitlack hat. Beidseitig lackierte Blätter zählen doppelt. Blätter haben grob 65–70 % der Fläche ihres Rechtecks.",
+      ctrls: () => [SEL("piece", "Stück", Object.entries(PIECES).map(([k, p]) => [k, `${p.n} (${p.a} cm²)`])),
+        R("area", PIECES[S.piece].solid ? "Fläche gesamt" : "Fläche je Seite", 1, 120, 1, "cm²"),
+        ...(PIECES[S.piece].solid ? [] : [SEL("sides", "Leitlack", [[1, "einseitig"], [2, "beidseitig"]])]),
+        R("n", "Stückzahl im Bad", 1, 10, 1, "Stk"),
+        SEL("jewel", "Schmuckart (Zieldicke)", Object.entries(JEWELS).map(([k, v]) => [k, k === "auto" ? v[0] : `${v[0]} (${nf(v[1] / 1000, 2)}–${nf(v[2] / 1000, 2)} mm)`]))],
+      facts: o => `<p class="tip${S.wireIso ? " ok" : ""}"><b>Beim Einhängen:</b> Den Draht, der im Elektrolyt hängt, am besten mit Nagellack isolieren. Nur das Werkstück und die Anoden sollen blankes Kupfer im Bad zeigen, sonst scheidet sich auch am Draht Kupfer ab.${S.wireIso ? " Im Teil „Draht“ ist er isoliert eingestellt." : ""}</p>` + dl([["Leitende Fläche gesamt", nf(o.A, 1) + " cm²"], ["Passt zu", o.jn], ["Zieldicke", nf(o.tLo / 1000, 2) + "–" + nf(o.tHi / 1000, 2) + " mm"],
+        ["Zeit bis Ziel (Fläche)", fmtH(o.tTgt)], ["Kupfer je Stück", nf(o.mPiece, 1) + " g"]]) }
+  };
+
+  const partsEl = $("parts");
+  Object.entries(PARTS).forEach(([k, p]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "pbtn"; b.id = "part-" + k; b.dataset.part = k; b.textContent = p.short;
+    b.addEventListener("click", () => select(k)); partsEl.appendChild(b);
+  });
+  document.querySelectorAll("svg .part").forEach(el => {
+    el.addEventListener("click", () => select(el.dataset.part));
+    el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(el.dataset.part); } });
+  });
+
+  function buildEditor() {
+    const p = PARTS[sel], o = model();
+    $("edTitle").textContent = p.n; $("edIntro").textContent = p.intro;
+    document.querySelectorAll(".pbtn").forEach(b => b.setAttribute("aria-pressed", b.dataset.part === sel));
+    document.querySelectorAll("svg .part").forEach(el => el.classList.toggle("sel", el.dataset.part === sel));
+    $("edCtrls").innerHTML = p.ctrls(o).map(c => {
+      const hint = c.hint ? `<small>${c.hint}</small>` : "";
+      if (c.t === "r") return `<div class="ctrl"><label for="c_${c.k}_r">${c.label}</label><span class="num"><input type="number" id="c_${c.k}_n" data-k="${c.k}" min="${c.min}" max="${c.max}" step="${c.step}" aria-label="${c.label} in ${c.unit}"><span class="unit">${c.unit}</span></span><input type="range" id="c_${c.k}_r" data-k="${c.k}" min="${c.min}" max="${c.max}" step="${c.step}">${hint}</div>`;
+      if (c.t === "s") return `<div class="ctrl"><label class="lbl" for="c_${c.k}_s">${c.label}</label><select id="c_${c.k}_s" data-k="${c.k}">${c.opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select>${hint}</div>`;
+      if (c.t === "c") return `<div class="ctrl tog"><input type="checkbox" id="c_${c.k}_c" data-k="${c.k}"><label for="c_${c.k}_c">${c.label}</label>${hint}</div>`;
+      return `<div class="ctrl"><button type="button" class="btn" id="${c.id}">${c.label}</button></div>`;
+    }).join("");
+    syncInputs();
+    $("edCtrls").querySelectorAll("[data-k]").forEach(el => {
+      const k = el.dataset.k;
+      if (el.type === "checkbox") el.addEventListener("change", () => { S[k] = el.checked; update(); });
+      else if (el.tagName === "SELECT") el.addEventListener("change", () => {
+        const v = el.value; S[k] = isNaN(+v) ? v : +v;
+        if (k === "piece") S.area = PIECES[v].a;
+        update(true);
+      });
+      else if (el.type === "range") el.addEventListener("input", () => { S[k] = +el.value; update(); });
+      else {
+        el.addEventListener("input", () => { const v = parseFloat(String(el.value).replace(",", ".")); if (!isFinite(v)) return; S[k] = clamp(v, +el.min, +el.max); update(false, el); });
+        el.addEventListener("change", () => { el.value = S[k]; });
+      }
+    });
+    const ai = $("autoI"); if (ai) ai.addEventListener("click", () => { S.I = Math.max(0.02, Math.round(model().iRec * 100) / 100); update(); });
+    $("edFacts").innerHTML = p.facts(o);
+  }
+  function syncInputs(skip) {
+    $("edCtrls").querySelectorAll("[data-k]").forEach(el => {
+      if (el === skip) return;
+      const v = S[el.dataset.k];
+      if (el.type === "checkbox") el.checked = !!v; else el.value = v;
+    });
+  }
+  function select(k) { sel = k; buildEditor(); }
+
+  /* ---------- Ergebnis ---------- */
+  function diagnose(o) {
+    const L = [];
+    const kante = o.locs[0], vert = o.locs[o.locs.length - 1];
+    if (o.r > 1) L.push(["bad", `<b>Strom zu hoch für die Fläche.</b> ${nf(o.j, 1)} A/dm² liegt über der Grenze von ${nf(o.jMax, 1)}. Passend wären ca. ${nf(o.iRec, 2)} A.`]);
+    else if (o.j > 2) L.push(["warn", `<b>Stromdichte hoch:</b> ${nf(o.j, 1)} A/dm². Für Glanzkupfer sind 1–2 A/dm² üblich, also ca. ${nf(o.iRec, 2)} A.`]);
+    else if (o.j < 1) L.push(["warn", `<b>Stromdichte niedrig:</b> ${nf(o.j, 2)} A/dm². Unter 1 A/dm² wird es eher matt.`]);
+    if (kante.s[0] === "bad") L.push(["bad", `<b>${kante.n} verbrennt:</b> dort ca. ${nf(kante.jl, 1)} A/dm², Grenze ${nf(o.jMax, 1)} A/dm².`]);
+    if (vert.s[1] === "matt rosa") L.push(["warn", `<b>Vertiefungen bleiben matt rosa:</b> dort nur ca. ${nf(vert.jl, 2)} A/dm², Glanz braucht mindestens ${nf(o.glossMin, 1)}.`]);
+    if (S.mode === "liegend") L.push(["warn", "<b>Anode liegt am Boden:</b> Die Unterkante zeigt direkt auf die Anode und bekommt den meisten Strom. Besser senkrecht an die Wand, Blatt parallel dazu."]);
+    if (o.cl < 20) L.push(["warn", "<b>Kein Chlorid:</b> Der Glanzzusatz wirkt schlechter, Kanten brennen früher. Vorschlag 0,1 g Kochsalz pro Liter."]);
+    if (o.acidG < 45) L.push(["warn", `<b>Wenig Säure:</b> ${nf(o.acidG, 0)} g/L. Üblich sind 50–70 g/L, mit weniger Säure verteilt sich der Strom ungleicher.`]);
+    if (o.D < 3) L.push(["warn", `<b>Abstand klein:</b> ${nf(o.D, 1)} cm. Empfohlen 5–6 cm.`]);
+    if (o.sides === 2 && S.mode === "wand") L.push(["warn", "<b>Rückseite wird dünner:</b> Nach der halben Zeit umdrehen oder eine zweite Anode verwenden."]);
+    if (!S.ramp) L.push(["warn", "<b>Kein Hochfahren:</b> Am Anfang fließt der Strom nur über Öse und Draht und brennt dort an. Erst ¼ des Stroms für 30–60 min."]);
+if (S.guard === "none") L.push(["warn", "<b>Kein Anodenschutz:</b> Anodenschlamm macht das Bad trüb und gibt raue Knötchen."]);
+    else if (S.guard === "box") L.push(["warn", "<b>Lochbox statt Beutel:</b> Grober Schlamm bleibt drin, feine dunkle Partikel kommen durch (auf deinen Fotos am Boden). Ein PP-Beutel in der Box hält sie zurück."]);
+    if (o.A > o.Aeff / 2 || o.jA > 2) L.push(["warn", `<b>Anode knapp:</b> Werkstück ${nf(o.A, 0)} cm², Anode wirksam ${nf(o.Aeff, 0)} cm². Die Anode sollte doppelt so groß sein.`]);
+    if (S.mode !== "liegend" && Math.max(S.anB, S.mode === "zwei" ? S.anB2 : 0) > o.hL) L.push(["warn", "<b>Anode ragt aus dem Bad.</b> Höhe kleiner als die Füllhöhe wählen."]);
+    if (S.T < 18) L.push(["warn", "<b>Bad zu kalt:</b> Unter 18 °C kristallisiert Kupfersulfat aus, an Boden und Anode."]);
+    else if (S.T > 30) L.push(["bad", "<b>Bad zu warm:</b> Über 30 °C zersetzt sich der Glanzzusatz schneller."]);
+    if (o.cuEff > 240 || o.acidEff > 90) L.push(["warn", `<b>Kristalle:</b> Durch Verdunstung sind es jetzt ca. ${nf(o.cuEff, 0)} g/L Kupfersulfat. Das erklärt die blauen Kristalle an Wand und Deckel. Mit destilliertem Wasser auffüllen.`]);
+    if (S.D > o.Dmax) L.push(["warn", `<b>Abstand begrenzt:</b> In dieser Lage passen höchstens ${nf(o.Dmax, 1)} cm.`]);
+    if (!L.length) L.push(["good", "<b>Aufbau passt.</b> Kanten und Vertiefungen liegen im Glanzbereich."]);
+    return L.sort((a, b) => (a[0] === "bad" ? 0 : 1) - (b[0] === "bad" ? 0 : 1));
+  }
+
+  function renderResults(o) {
+    const flat = o.locs.find(l => l.n.startsWith("Fläche"));
+    $("dMain").textContent = nf(flat.dd, flat.dd < 10 ? 1 : 0);
+    $("dMm").textContent = "= " + nf(flat.dd / 1000, 3) + " mm nach " + fmtH(S.t);
+    $("mJ").textContent = nf(o.j, 2) + " A/dm²";
+    $("mU").textContent = nf(o.U, 1) + " V";
+    $("mM").textContent = nf(o.m, 1) + " g";
+    $("mP").textContent = nf(o.mPiece, 1) + " g";
+    $("mT").textContent = o.jn.split(",")[0] + ", " + nf(o.tLo / 1000, 2) + "–" + nf(o.tHi / 1000, 2) + " mm";
+    $("mTT").textContent = fmtH(o.tTgt);
+    $("locTbl").innerHTML = `<thead><tr><th>Stelle</th><th class="n">A/dm²</th><th class="n">Dicke</th><th>Aussehen</th></tr></thead><tbody>` +
+      o.locs.map(l => `<tr><td>${l.n}</td><td class="n">${nf(l.jl, 2)}</td><td class="n">${nf(l.dd)} µm</td><td><span class="chip ${l.s[0]}">${l.s[1]}</span></td></tr>`).join("") + "</tbody>";
+    $("diag").innerHTML = diagnose(o).map(([c, t]) => `<li class="${c}">${t}</li>`).join("");
+    $("formula").textContent = `d = I·t·η·M / (z·F·ρ·A) = ${nf(S.I, 2)} A · ${nf(S.t * 3600)} s · ${nf(o.eta, 2)} · 63,55 g/mol / (2 · 96 485 C/mol · 8,96 g/cm³ · ${nf(o.A, 1)} cm²) = ${nf(o.d, 1)} µm (Durchschnitt)`;
+  }
+
+  function update(rebuild, skip) {
+    const o = model();
+    drawScene(o); renderResults(o);
+    if (rebuild) { buildEditor(); return; }
+    syncInputs(skip);
+    const dR = $("c_D_r"), dN = $("c_D_n");
+    if (dR) { dR.max = o.Dmax; dN.max = o.Dmax; }
+    $("edFacts").innerHTML = PARTS[sel].facts(o);
+  }
+
+  function preset(p) {
+    Object.assign(S, IST, p);
+    if (p === VOR) {
+      const o = model();
+      S.I = Math.round(o.iRec * 100) / 100;
+      S.t = Math.ceil(o.tgt / (13.2 * 1.5 * 0.98) * 2) / 2;
+    }
+    update(true);
+  }
+  $("pIst").addEventListener("click", () => preset({}));
+  $("pVor").addEventListener("click", () => preset(VOR));
+
+  update(true);
+  requestAnimationFrame(frame);
+})();
+</script>

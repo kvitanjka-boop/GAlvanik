@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galvanik-Bad 3D</title>
+<style>
+:root {
+  --bg: #eef1f3; --surface: #ffffff; --fg: #1b2228; --muted: #5a6670; --line: #d5dbe0;
+  --copper: #b5602b; --copper-soft: #f6e6db; --shiny: #e08a4f; --matte: #e8a796; --burnt: #5c3018;
+  --good: #2b7a4b; --warn: #9a6200; --bad: #b3261e; --toast: #fff7e0; --toast-line: #e3b54a;
+  --f: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: Consolas, "SFMono-Regular", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f); font-size: 14px; line-height: 1.45; overflow: hidden; }
+.app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+header { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+h1 { font-size: 1.25rem; margin: 0; font-weight: 600; letter-spacing: .01em; }
+h1 span { color: var(--copper); }
+.grp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.grp .lab { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 2px; }
+.sp { flex: 1; }
+button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 7px; padding: 5px 11px; }
+button:hover { border-color: var(--copper); }
+button.main { background: var(--copper); border-color: var(--copper); color: #fff; font-weight: 600; }
+button.main:hover { filter: brightness(1.08); }
+button[aria-pressed="true"] { background: var(--copper-soft); border-color: var(--copper); color: var(--copper); font-weight: 600; }
+main { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
+.stage { position: relative; min-width: 0; min-height: 0; }
+#view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+.help { position: absolute; left: 12px; bottom: 12px; background: rgba(255,255,255,.88); border: 1px solid var(--line); border-radius: 8px; padding: 7px 11px; font-size: .8rem; color: var(--muted); max-width: 560px; pointer-events: none; }
+.help b { color: var(--fg); font-weight: 600; }
+.legend { position: absolute; left: 12px; top: 12px; background: rgba(255,255,255,.88); border: 1px solid var(--line); border-radius: 8px; padding: 7px 11px; font-size: .8rem; display: grid; gap: 3px; pointer-events: none; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+.tip { position: absolute; pointer-events: none; background: #1b2228; color: #fff; font-size: .78rem; padding: 3px 8px; border-radius: 5px; transform: translate(12px, 12px); white-space: nowrap; display: none; }
+.toast { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); background: var(--toast); border: 1px solid var(--toast-line); border-radius: 10px; padding: 12px 14px; box-shadow: 0 6px 24px rgba(0,0,0,.12); display: none; }
+.toast.on { display: block; }
+.toast h3 { margin: 0 0 4px; font-size: .95rem; }
+.toast p { margin: 0 0 9px; }
+.toast .row { display: flex; gap: 8px; justify-content: flex-end; }
+aside { background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto; padding: 14px 16px 30px; }
+.parts { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.parts button { padding: 3px 9px; font-size: .82rem; }
+h2 { font-size: 1.05rem; margin: 0 0 3px; }
+.intro { color: var(--muted); margin: 0 0 10px; font-size: .86rem; }
+.ctrl { margin-bottom: 10px; }
+.ctrl label, .ctrl .lbl { display: block; font-size: .84rem; font-weight: 600; margin-bottom: 2px; }
+.ctrl .rowc { display: grid; grid-template-columns: 1fr 92px; gap: 8px; align-items: center; }
+.ctrl input[type=range] { width: 100%; accent-color: var(--copper); }
+.num { display: flex; align-items: center; gap: 4px; }
+.num input { width: 62px; font: inherit; padding: 2px 5px; border: 1px solid var(--line); border-radius: 5px; text-align: right; }
+.num .unit { color: var(--muted); font-size: .8rem; }
+.ctrl select { width: 100%; font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.ctrl.tog { display: flex; gap: 8px; align-items: flex-start; }
+.ctrl.tog label { font-weight: 500; margin: 0; }
+.ctrl.tog input { accent-color: var(--copper); margin-top: 3px; }
+.ctrl small { display: block; color: var(--muted); font-size: .76rem; }
+.facts { background: var(--bg); border-radius: 8px; padding: 8px 10px; font-size: .82rem; margin: 4px 0 6px; }
+.facts div { display: flex; justify-content: space-between; gap: 10px; }
+.facts b { font-family: var(--mono); font-weight: 500; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0 12px; }
+.big { display: flex; align-items: baseline; gap: 8px; }
+.big .v { font-size: 2.2rem; font-weight: 600; color: var(--copper); font-family: var(--mono); line-height: 1; }
+.big .u { color: var(--muted); }
+.sub { color: var(--muted); font-size: .82rem; margin: 2px 0 10px; }
+.mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.mgrid div { background: var(--bg); border-radius: 7px; padding: 6px 8px; }
+.mgrid small { display: block; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+.mgrid b { font-family: var(--mono); font-weight: 500; }
+table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: 10px; }
+th, td { text-align: left; padding: 4px 4px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: .74rem; }
+td.n, th.n { text-align: right; font-family: var(--mono); }
+.chip { display: inline-block; padding: 0 7px; border-radius: 10px; font-size: .76rem; }
+.chip.good { background: #fbe3cf; color: #7a3b12; }
+.chip.warn { background: #f8dcd4; color: #8a3f33; }
+.chip.bad { background: #5c3018; color: #fff; }
+ul.diag { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+ul.diag li { padding: 6px 9px; border-radius: 7px; border-left: 4px solid; background: var(--bg); font-size: .84rem; }
+ul.diag li.bad { border-color: var(--bad); }
+ul.diag li.warn { border-color: var(--warn); }
+ul.diag li.good { border-color: var(--good); }
+.formula { font-family: var(--mono); font-size: .72rem; color: var(--muted); word-break: break-word; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Galvanik-Bad <span>3D</span></h1>
+    <div class="grp"><span class="lab">Aufbau</span>
+      <button id="pIst" aria-pressed="true">Mein Aufbau heute</button>
+      <button id="pVor" aria-pressed="false">Vorschlag aus Etappe 2 und 7</button>
+    </div>
+    <div class="grp"><span class="lab">Ansicht</span>
+      <button data-view="schraeg">Schräg</button>
+      <button data-view="vorne">Vorne</button>
+      <button data-view="oben">Oben</button>
+      <button data-view="seite">Seite</button>
+    </div>
+    <div class="sp"></div>
+    <button class="main" id="hang">Werkstück einhängen</button>
+  </header>
+  <main>
+    <div class="stage" id="stage">
+      <canvas id="view" tabindex="0" aria-label="3D-Ansicht des Galvanikbads"></canvas>
+      <div class="legend">
+        <div><i style="background:#e8954f"></i>glänzend</div>
+        <div><i style="background:#e8a796"></i>matt rosa</div>
+        <div><i style="background:#5c3018"></i>verbrannt</div>
+        <div><i style="background:#3d8fd6"></i>Kupfer-Ionen (Strom)</div>
+      </div>
+      <div class="help"><b>Linke Maustaste</b> drehen und kippen · <b>Rechte Maustaste</b> verschieben · <b>Mausrad</b> zoomen · <b>Teil anklicken</b> zum Bearbeiten · ausgewählte Anode oder Werkstück <b>mit der Maus ziehen</b></div>
+      <div class="tip" id="tip"></div>
+      <div class="toast" id="toast" role="alert">
+        <h3>Beim Einhängen: Draht isolieren</h3>
+        <p>Der Draht, der unter dem Badspiegel im Elektrolyt hängt, sollte isoliert sein, am besten mit Nagellack. Nur das Werkstück und die Anoden sollen blankes Kupfer im Bad zeigen, sonst scheidet sich auch am Draht Kupfer ab.</p>
+        <div class="row"><button id="tIso" class="main">Draht ist isoliert</button><button id="tNo">Noch blank lassen</button></div>
+      </div>
+    </div>
+    <aside>
+      <div class="parts" id="parts" role="group" aria-label="Teile"></div>
+      <h2 id="edTitle"></h2>
+      <p class="intro" id="edIntro"></p>
+      <div id="edCtrls"></div>
+      <div class="facts" id="edFacts"></div>
+      <hr>
+      <div class="lab" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Ergebnis auf der Fläche</div>
+      <div class="big"><span class="v" id="dMain">0</span><span class="u">µm Kupfer</span></div>
+      <div class="sub" id="dSub"></div>
+      <div class="mgrid">
+        <div><small>Stromdichte</small><b id="mJ"></b></div>
+        <div><small>Spannung (ca.)</small><b id="mU"></b></div>
+        <div><small>Kupfer gesamt</small><b id="mM"></b></div>
+        <div><small>Kupfer pro Stück</small><b id="mP"></b></div>
+        <div><small>Ziel</small><b id="mT"></b></div>
+        <div><small>Zeit bis Ziel</small><b id="mTT"></b></div>
+      </div>
+      <table id="locTbl"></table>
+      <ul class="diag" id="diag"></ul>
+      <div class="formula" id="formula"></div>
+    </aside>
+  </main>
+</div>
+<script>/*APP*/</script>
+</body>
+</html>
